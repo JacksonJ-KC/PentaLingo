@@ -1,0 +1,156 @@
+/* General body styling */
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+
+/* Game board styling */
+#gameBoard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+/* Container for flex layouts */
+.container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+/* Row container for words */
+.row-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 80%;
+}
+
+/* Rack and discard pile container */
+.rack-discard-container {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: flex-start; /* Align items at the top for consistent layout */
+}
+
+/* Rack styling */
+.rack, .discard-pile {
+  border: 2px solid #333;
+  padding: 10px;
+  width: 160px;
+  height: 50px; /* Adjust height to make both elements uniform */
+  background-color: #f9f9f9;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  gap: 5px;
+}
+
+.discard-pile:has(.cell:nth-child(4)) {
+  justify-content: flex-end;
+}
+
+.discard-pile .cell:last-child {
+  cursor: grab; /* Show a grabbing cursor */
+}
+
+/* Header styling for rack and discard pile */
+.rack h3, .discard-pile h3 {
+  margin: 0 0 10px 0; /* Space below the label */
+  font-size: 16px;
+  text-align: center;
+}
+
+/* Pool, board, and discard-pile common styles */
+.pool, .board, .discard-pile {
+  border: 2px solid #333;
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+/* Row label for words */
+.row-label {
+  width: 15%;
+  font-weight: bold;
+  text-align: right;
+}
+
+/* Word rows on the game board */
+.row {
+  display: flex;
+  gap: 5px;
+  flex-grow: 1;
+  justify-content: center;
+}
+
+/* Tile cells */
+.cell {
+  width: 45px;
+  height: 45px;
+  display: inline-block;
+  margin: 2px;
+  border: 1px solid #ddd;
+  text-align: center;
+  line-height: 45px;
+  font-size: 24px;
+  background-color: #fff;
+  flex-shrink: 0;
+}
+
+/* Empty cell styling */
+.cell.empty {
+  background-color: #e8e8e8;
+}
+
+/* Cell highlighting on drag over */
+.cell.drag-over {
+  background-color: #c8ffc8;
+}
+
+/* Filled cells */
+.cell.filled {
+  background-color: #f9f9f9;
+}
+
+/* Style for tiles with data-letter */
+.cell[data-letter] {
+  font-weight: bold;
+}
+
+/* Visual feedback for dragging */
+.cell.dragging {
+  opacity: 0.5;
+}
+
+.bonus {
+  background-color: #99ff00 !important;
+}
+
+/* Buttons */
+button {
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#letterPool {
+  display: none;
+}
+
+#letterRack .cell {
+  cursor: grab;
+}
+
+/* Timer styling */
+#timer {
+  font-size: 32px;
+  font-weight: bold;
+  margin: 10px;
+}
