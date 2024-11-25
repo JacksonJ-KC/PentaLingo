@@ -29,7 +29,7 @@ In this fast-paced, brain-teasing game, your mission is to craft five words whil
   - Each letter beyond 4 in a word: **+1 point per letter**.  
 
 - **Bonus Points**:  
-  - Bonus letters (`F`, `J`, `K`, `Q`, `V`, `W`, `X`, `Y`, `Z`): **+3 points per letter**.  
+  - Bonus letters (`J`, `K`, `Q`, `V`, `X`, `Z`): **+3 points per letter**.  
 
 - **Penalties**:  
   - Each unused letter in the discard stack: **-1 point per letter**.
