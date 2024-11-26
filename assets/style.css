@@ -6,6 +6,44 @@ body {
   padding: 0;
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #f4f4f4;
+  border-bottom: 2px solid #ddd;
+  position: relative; /* Allows absolute positioning of the title */
+}
+
+/* Score styling */
+#scoreContainer {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.game-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 32px;
+  margin: 0;
+}
+
+.header-right {
+  margin-right: 50px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Header-right section styling */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 /* Game board styling */
 #gameBoard {
   display: flex;
@@ -148,9 +186,12 @@ button {
   cursor: grab;
 }
 
-/* Timer styling */
 #timer {
-  font-size: 32px;
-  font-weight: bold;
-  margin: 10px;
+  font-size: 24px;
+}
+
+#playButton {
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
 }

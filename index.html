@@ -4,25 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PentaLingo</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <h1>PentaLingo</h1>
+  <header class="header">
+    <div id="scoreContainer">Total Score: <span id="score">0</span></div>
+    <h1 class="game-title">PentaLingo</h1>
+    <div class="header-right">
+      <div id="timer">Time Left: <span id="timeLeft">300</span> seconds</div>
+      <button id="playButton">Play</button>
+    </div>
+  </header>
   <div class="pool" id="letterPool"></div>
   <div class="container rack-discard-container">
-  <div class="rack-section">
-    <h3 class="rack-label">Queue</h3>
-    <div class="rack" id="letterRack"></div>
+    <div class="rack-section">
+      <h3 class="rack-label">Queue</h3>
+      <div class="rack" id="letterRack"></div>
+    </div>
+    <div class="discard-section">
+      <h3 class="discard-label">Discard Stack</h3>
+      <div id="discardPile" class="discard-pile"></div>
+    </div>
   </div>
-  <div class="discard-section">
-    <h3 class="discard-label">Discard Stack</h3>
-    <div id="discardPile" class="discard-pile"></div>
-  </div>
-</div>
   <div class="container" id="gameBoard"></div>
-  <h2>Total Score: <span id="score">0</span></h2>
-  <div id="timer">Time Left: <span id="timeLeft">300</span> seconds</div>
-  <button id="playButton">Play</button>
-  <script src="word-game.js"></script>
+  <script src="assets/word-game.js"></script>
 </body>
 </html>

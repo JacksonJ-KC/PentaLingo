@@ -5,6 +5,10 @@ const playButton = document.getElementById("playButton");
 const scoreDisplay = document.getElementById("score");
 const timeLeftDisplay = document.getElementById("timeLeft");
 const bonusLetters = ["J", "K", "Q", "V", "X", "Z"];
+const dragPop = new Audio('assets/audio/drag-pop.mp3');
+const releasePop = new Audio('assets/audio/release-pop.mp3');
+const errorSound = new Audio('assets/audio/error.mp3');
+const gameOverSound = new Audio('assets/audio/game-over.mp3');
 
 let score = 0;
 let timer = null;
@@ -129,7 +133,7 @@ function handleDragStart(event) {
     event.preventDefault(); // Prevent dragging from invalid parents
     return;
   }
-
+  dragPop.play();
   event.dataTransfer.setData("text/plain", event.target.getAttribute("data-letter"));
   currentTile = event.target; // Keep track of the dragged tile
   setTimeout(() => {
@@ -177,6 +181,7 @@ function setupDragAndDrop() {
 
       // Enforce the rule
       if (isDroppingBeyondFirstCell && !firstCellsFilled) {
+        errorSound.play();
         // Prevent the drop and notify the user (optional)
         alert("You must place the first letter of all words first!");
         return;
@@ -184,6 +189,7 @@ function setupDragAndDrop() {
 
       // Proceed with the drop
       if (firstEmptyCell && currentTile) {
+        releasePop.play();
         const letter = event.dataTransfer.getData("text/plain");
 
         // Update the cell with the dropped letter
@@ -204,6 +210,12 @@ function setupDragAndDrop() {
         // Remove the tile from the rack
         currentTile.remove();
         currentTile = null;
+
+        // Make the next latest discarded tile draggable
+        const discardedTiles = Array.from(discardPile.children);
+        discardedTiles.forEach((tile, index) => {
+          tile.draggable = index === discardedTiles.length - 1; // Only make the first tile draggable
+        });
       }
     });
   });
@@ -214,6 +226,7 @@ function setupDragAndDrop() {
   });
 
   discardPile.addEventListener("drop", event => {
+    releasePop.play();
     event.preventDefault();
 
     if (currentTile) {
@@ -234,6 +247,7 @@ function setupDragAndDrop() {
 
   discardPile.addEventListener("dragstart", event => {
     currentTile = event.target;
+    dragPop.play();
   });
 
   discardPile.addEventListener("dragend", event => {
@@ -241,6 +255,7 @@ function setupDragAndDrop() {
     if (currentTile && currentTile.parentElement !== discardPile) {
       currentTile.remove();
       currentTile = null;
+      releasePop.play();
 
       // Update draggability for remaining tiles in the discard pile
       const discardedTiles = Array.from(discardPile.children);
@@ -321,10 +336,12 @@ async function submitWord(row) {
       cell.textContent = "";
       cell.setAttribute("data-letter", "");
       cell.classList.remove("filled");
+      cell.classList.remove("bonus");
       cell.classList.add("empty");
     });
 
   } else {
+    errorSound.play();
     alert(`"${word}" is not a valid word!`);
   }
 }
@@ -417,6 +434,6 @@ function endGame() {
 
   // Calculate penalties for unused letters
   const penalty = calculateDiscardPenalties();
-
+  gameOverSound.play();
   alert(`Game over! Final Score: ${score} (Discard penalty: ${penalty} points)`);
 }
