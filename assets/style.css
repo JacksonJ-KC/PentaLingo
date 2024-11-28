@@ -132,7 +132,7 @@ header.header {
   justify-content: flex-end;
 }
 
-.discard-pile .cell:last-child {
+.discard-pile .cell:first-child {
   cursor: grab;
 }
 

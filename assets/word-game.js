@@ -223,7 +223,7 @@ function setupDragAndDrop() {
     releasePop.play();
     event.preventDefault();
 
-    if (currentTile) {
+    if (currentTile && currentTile === queueTile) {
       // Move the current tile to the discard pile
       discardPile.prepend(currentTile);
 
@@ -280,6 +280,11 @@ function startGame() {
 
 // Draw a tile from the pool
 function drawTile() {
+  console.log(queueTile)
+  if (queueTile) {
+    return;
+  }
+
   if (letterPool.children.length > 0) {
     const tile = letterPool.firstChild;
     queueTile = tile;
