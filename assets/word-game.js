@@ -457,7 +457,7 @@ function getDiscardPileArray() {
 // Function to remove the last tile from the discard pile
 function removeFromDiscardPile() {
   const discardPileDiv = document.getElementById("discardPile");
-  const lastTileDiv = discardPileDiv.lastElementChild; // Get the last tile in the DOM
+  const lastTileDiv = discardPileDiv.firstElementChild; // Get the last tile in the DOM
 
   if (lastTileDiv) {
     const lastTile = {
