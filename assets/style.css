@@ -1,3 +1,4 @@
+
 html, body {
   height: 100%;
   margin: 0;
@@ -119,7 +120,7 @@ header.header {
   border: 2px solid #333;
   padding: 10px;
   max-width: 100%;
-  min-height: 50px;
+  min-height: 59px;
   height: auto;
   background-color: #f9f9f9;
   display: flex;
@@ -174,6 +175,7 @@ header.header {
 
 .cell.drag-over {
   background-color: #c8ffc8;
+  border: 2px dashed #00f;
 }
 
 .cell.filled {
@@ -186,6 +188,7 @@ header.header {
 
 .cell.dragging {
   opacity: 0.5;
+  z-index: 1000;
 }
 
 .bonus {
@@ -209,4 +212,100 @@ header.header {
   border: 1px solid #ddd;
   border-radius: 5px;
   background-color: #f9f9f9;
+}
+
+/* Responsive Styles */
+
+@media screen and (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+
+  #gameBoard, #letterRack, #letterPool, #discardPile {
+    width: 100%;
+    margin: 10px 0;
+  }
+
+  .row-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .word-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  #tileCountsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+
+  button {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .cell {
+    width: 35px !important;
+    height: 35px;
+    font-size: 18px;
+    line-height: 35px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  body {
+    font-size: 12px;
+  }
+
+  .cell {
+    width: 30px !important;
+    height: 30px;
+    font-size: 14px;
+    line-height: 30px;
+  }
+
+  .word-row {
+    gap: 3px;
+  }
+
+  #letterPool, #discardPile {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .rack, .discard-pile {
+    padding: 5px;
+  }
+
+  .game-title {
+    font-size: 24px;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  nav {
+    display: none; /* Hide the sidebars */
+  }
+
+  #leftSidebarButton,
+  #rightSidebarButton {
+    display: block; /* Show the buttons */
+    position: fixed;
+    bottom: 20px;
+    z-index: 1000;
+  }
+
+  #leftSidebarButton {
+    left: 10px;
+  }
+
+  #rightSidebarButton {
+    right: 10px;
+  }
 }

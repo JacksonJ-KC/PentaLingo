@@ -48,6 +48,15 @@ const letterSet = {
 
 let queueTile = null;
 let currentTile = null;
+let touchStartX = 0;
+let touchStartY = 0;
+
+
+// Initialize the game
+let gameLetterSet = { ...letterSet }; // Copy the letter set for the game
+initializePool();
+initializeGameBoard();
+playButton.addEventListener("click", startGame);
 
 // Initialize the game board with empty cells
 function initializeGameBoard() {
@@ -90,15 +99,14 @@ function initializeGameBoard() {
 function initializePool() {
   letterPool.innerHTML = ""; // Clear the pool
 
-  // Iterate through the letterSet and generate the specified number of tiles for each letter
-  for (const [letter, count] of Object.entries(letterSet)) {
+  // Iterate through the gameLetterSet and generate the specified number of tiles for each letter
+  for (const [letter, count] of Object.entries(gameLetterSet)) {
     for (let i = 0; i < count; i++) {
       const tile = createTile(letter);
       letterPool.appendChild(tile);
     }
   }
 
-  // Optionally shuffle the pool for randomness
   shufflePool();
 }
 
@@ -127,6 +135,11 @@ function createTile(letter) {
   tile.addEventListener("dragstart", handleDragStart);
   tile.addEventListener("dragend", handleDragEnd);
 
+  // Touch event listeners for mobile support
+  tile.addEventListener("touchstart", handleTouchStart, { passive: true });
+  tile.addEventListener("touchmove", handleTouchMove, { passive: false });
+  tile.addEventListener("touchend", handleTouchEnd);
+
   return tile;
 }
 
@@ -149,6 +162,89 @@ function handleDragStart(event) {
 function handleDragEnd(event) {
   // Restore visibility after dragging ends
   event.target.style.display = "";
+}
+
+function handleTouchStart(event) {
+  const touch = event.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  dragPop.play();
+
+  // Emulate drag start
+  currentTile = event.target;
+  currentTile.classList.add("dragging");
+}
+
+function handleTouchMove(event) {
+  event.preventDefault(); // Prevent scrolling during touch movement
+
+  const touch = event.touches[0];
+  const x = touch.clientX;
+  const y = touch.clientY;
+
+  // Move the tile with the touch
+  currentTile.style.position = "absolute";
+  currentTile.style.left = `${x - touchStartX}px`;
+  currentTile.style.top = `${y - touchStartY}px`;
+}
+
+function handleTouchEnd(event) {
+  currentTile.classList.remove("dragging");
+  currentTile.style.position = ""; // Reset position styles
+  currentTile.style.left = "";
+  currentTile.style.top = "";
+
+  // Emulate drop behavior
+  const targetElement = document.elementFromPoint(
+    event.changedTouches[0].clientX,
+    event.changedTouches[0].clientY
+  );
+
+  if (targetElement && targetElement.classList.contains("cell")) {
+    const firstEmptyCell = findFirstEmptyCell(targetElement.parentElement);
+    if (firstEmptyCell) {
+      releasePop.play();
+      const letter = currentTile.getAttribute("data-letter");
+
+      // Update the cell with the dropped letter
+      firstEmptyCell.textContent = letter;
+      firstEmptyCell.setAttribute("data-letter", letter);
+      firstEmptyCell.classList.remove("empty");
+      firstEmptyCell.classList.add("filled");
+      if (bonusLetters.includes(letter)) {
+        firstEmptyCell.classList.add("bonus");
+      }
+
+      // Remove the tile from the rack
+      currentTile.remove();
+      currentTile = null;
+    }
+  } else {
+    // Return the tile to its original position if not dropped correctly
+    currentTile.style.position = "";
+    currentTile.style.left = "";
+    currentTile.style.top = "";
+  }
+}
+
+function handleTouchMove(event) {
+  event.preventDefault();
+  const touch = event.touches[0];
+  const x = touch.clientX;
+  const y = touch.clientY;
+
+  currentTile.style.position = "absolute";
+  currentTile.style.left = `${x - touchStartX}px`;
+  currentTile.style.top = `${y - touchStartY}px`;
+
+  const targetElement = document.elementFromPoint(x, y);
+  document.querySelectorAll(".cell.drag-over").forEach(cell =>
+    cell.classList.remove("drag-over")
+  );
+
+  if (targetElement && targetElement.classList.contains("cell")) {
+    targetElement.classList.add("drag-over");
+  }
 }
 
 // Allow dropping on the farthest left empty cell in each row
@@ -267,6 +363,7 @@ function findFirstEmptyCell(row) {
 
 // Start the game
 function startGame() {
+  gameLetterSet = { ...letterSet }; // Copy the letter set for the game
   resetGame();
   drawRandomConsonants();
   updateTileCounts();
@@ -507,8 +604,8 @@ function updateTileCounts() {
   // Clear the previous grid
   tileCountsGrid.innerHTML = "";
 
-  // Iterate through the letterSet and create grid items
-  for (const [letter, count] of Object.entries(letterSet)) {
+  // Iterate through the gameLetterSet and create grid items
+  for (const [letter, count] of Object.entries(gameLetterSet)) {
     const gridItem = document.createElement("div");
     gridItem.classList.add("grid-item");
     gridItem.innerHTML = `
@@ -520,7 +617,7 @@ function updateTileCounts() {
 }
 
 function removeLetterFromSet(letter) {
-  letterSet[letter] -= 1;
+  gameLetterSet[letter] -= 1;
   updateTileCounts(); // Update the grid after modification
 }
 
@@ -542,13 +639,9 @@ function resetGame() {
   // Reinitialize the game
   initializePool(); // Reset the letter pool
   initializeGameBoard(); // Reset the game board
+  submittedWordsList.innerHTML = ""; // Clear the submitted words list
+  updateTileCounts(); // Update the tile counts grid
 }
-
-// Initialize the game
-initializePool();
-initializeGameBoard();
-playButton.addEventListener("click", startGame);
-
 
 async function validateWord(word) {
   const apiUrl = `https://api.datamuse.com/words?sp=${word}&max=1`;
