@@ -1,50 +1,43 @@
-/* General body styling */
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
 body {
   font-family: Arial, sans-serif;
   text-align: center;
-  margin: 0;
   padding: 0;
 }
 
-.header {
+main .d-flex {
+  margin-top: calc(3rem + 16px);
+  height: calc(100vh - (3rem + 16px));
+  overflow: hidden;
+}
+
+button {
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+nav {
+  width: 250px;
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px;
-  background-color: #f4f4f4;
-  border-bottom: 2px solid #ddd;
-  position: relative; /* Allows absolute positioning of the title */
+  height: 100%;
+  overflow-y: auto;
 }
 
-/* Score styling */
-#scoreContainer {
-  font-size: 24px;
-  font-weight: bold;
+header.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
 }
 
-.game-title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 32px;
-  margin: 0;
-}
-
-.header-right {
-  margin-right: 50px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-/* Header-right section styling */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-/* Game board styling */
 #gameBoard {
   display: flex;
   flex-direction: column;
@@ -53,129 +46,14 @@ body {
   margin: 20px 0;
 }
 
-/* Container for flex layouts */
-.container {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-}
-
-/* Row container for words */
-.row-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 80%;
-}
-
-/* Rack and discard pile container */
-.rack-discard-container {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  align-items: flex-start; /* Align items at the top for consistent layout */
-}
-
-/* Rack styling */
-.rack, .discard-pile {
-  border: 2px solid #333;
-  padding: 10px;
-  width: 160px;
-  height: 50px; /* Adjust height to make both elements uniform */
-  background-color: #f9f9f9;
-  display: flex;
-  flex-direction: row-reverse;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  gap: 5px;
-}
-
-.discard-pile:has(.cell:nth-child(4)) {
-  justify-content: flex-end;
-}
-
-.discard-pile .cell:last-child {
-  cursor: grab; /* Show a grabbing cursor */
-}
-
-/* Header styling for rack and discard pile */
-.rack h3, .discard-pile h3 {
-  margin: 0 0 10px 0; /* Space below the label */
-  font-size: 16px;
-  text-align: center;
-}
-
-/* Pool, board, and discard-pile common styles */
-.pool, .board, .discard-pile {
-  border: 2px solid #333;
-  padding: 10px;
-  background-color: #f9f9f9;
-}
-
-/* Row label for words */
-.row-label {
-  width: 15%;
-  font-weight: bold;
-  text-align: right;
-}
-
-/* Word rows on the game board */
-.row {
-  display: flex;
-  gap: 5px;
-  flex-grow: 1;
-  justify-content: center;
-}
-
-/* Tile cells */
-.cell {
-  width: 45px;
-  height: 45px;
-  display: inline-block;
-  margin: 2px;
-  border: 1px solid #ddd;
-  text-align: center;
-  line-height: 45px;
+#scoreContainer {
   font-size: 24px;
-  background-color: #fff;
-  flex-shrink: 0;
-}
-
-/* Empty cell styling */
-.cell.empty {
-  background-color: #e8e8e8;
-}
-
-/* Cell highlighting on drag over */
-.cell.drag-over {
-  background-color: #c8ffc8;
-}
-
-/* Filled cells */
-.cell.filled {
-  background-color: #f9f9f9;
-}
-
-/* Style for tiles with data-letter */
-.cell[data-letter] {
   font-weight: bold;
 }
 
-/* Visual feedback for dragging */
-.cell.dragging {
-  opacity: 0.5;
-}
-
-.bonus {
-  background-color: #99ff00 !important;
-}
-
-/* Buttons */
-button {
-  padding: 8px 16px;
-  font-size: 16px;
-  cursor: pointer;
+#submittedWordsList {
+  flex-grow: 1;
+  overflow-y: auto;
 }
 
 #letterPool {
@@ -194,4 +72,141 @@ button {
   padding: 8px 16px;
   font-size: 16px;
   cursor: pointer;
+}
+
+.flex-grow-1 {
+  margin-top: calc(3rem + 16px); /* Same dynamic height adjustment as nav */
+  height: calc(100vh - (3rem + 16px)); /* Subtract the header height dynamically */
+  overflow-y: auto; /* Allow scrolling if content overflows */
+}
+
+.game-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 32px;
+  margin: 0;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.row-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 80%;
+}
+
+.rack {
+  border: 2px solid #333;
+  padding: 10px;
+  width: 162px;
+  height: 50px;
+  background-color: #f9f9f9;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  gap: 5px;
+}
+
+.discard-pile {
+  border: 2px solid #333;
+  padding: 10px;
+  max-width: 100%;
+  min-height: 50px;
+  height: auto;
+  background-color: #f9f9f9;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+
+.discard-pile:has(.cell:nth-child(4)) {
+  justify-content: flex-end;
+}
+
+.discard-pile .cell:last-child {
+  cursor: grab;
+}
+
+.rack h3, .discard-pile h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  text-align: center;
+}
+
+.pool, .board, .discard-pile {
+  border: 2px solid #333;
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+.row-label {
+  width: 15%;
+  font-weight: bold;
+  text-align: right;
+}
+
+.cell {
+  width: 45px !important;
+  height: 45px;
+  display: inline-block;
+  margin: 2px;
+  border: 1px solid #ddd;
+  text-align: center;
+  vertical-align: middle;
+  line-height: 45px;
+  font-size: 24px;
+  background-color: #fff;
+  flex-shrink: 0;
+}
+
+.cell.empty {
+  background-color: #e8e8e8;
+}
+
+.cell.drag-over {
+  background-color: #c8ffc8;
+}
+
+.cell.filled {
+  background-color: #f9f9f9;
+}
+
+.cell[data-letter] {
+  font-weight: bold;
+}
+
+.cell.dragging {
+  opacity: 0.5;
+}
+
+.bonus {
+  background-color: #99ff00 !important;
+}
+
+.border-top {
+  margin-top: auto;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.grid-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
 }

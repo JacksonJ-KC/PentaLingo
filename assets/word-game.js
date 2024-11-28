@@ -1,9 +1,12 @@
 const letterPool = document.getElementById("letterPool");
 const letterRack = document.getElementById("letterRack");
+const discardPile = document.getElementById("discardPile");
 const gameBoard = document.getElementById("gameBoard");
 const playButton = document.getElementById("playButton");
 const scoreDisplay = document.getElementById("score");
 const timeLeftDisplay = document.getElementById("timeLeft");
+const submittedWordsList = document.getElementById('submittedWordsList');
+const tileCountsGrid = document.getElementById("tileCountsGrid");
 const bonusLetters = ["J", "K", "Q", "V", "X", "Z"];
 const dragPop = new Audio('assets/audio/drag-pop.mp3');
 const releasePop = new Audio('assets/audio/release-pop.mp3');
@@ -42,6 +45,7 @@ const letterSet = {
 "Y": 2,
 "Z": 1
 }
+
 let queueTile = null;
 let currentTile = null;
 
@@ -60,7 +64,7 @@ function initializeGameBoard() {
     rowLabel.textContent = `Word ${i + 1}`;
 
     const row = document.createElement("div");
-    row.classList.add("row");
+    row.classList.add("word-row");
     row.setAttribute("data-row-index", i);
 
     for (let j = 0; j < cellsPerRow; j++) {
@@ -149,8 +153,7 @@ function handleDragEnd(event) {
 
 // Allow dropping on the farthest left empty cell in each row
 function setupDragAndDrop() {
-  const rows = document.querySelectorAll(".row");
-  const discardPile = document.getElementById("discardPile");
+  const rows = document.querySelectorAll(".word-row");
 
   // Set up drag-and-drop for each row
   rows.forEach(row => {
@@ -169,7 +172,7 @@ function setupDragAndDrop() {
 
     row.addEventListener("drop", event => {
       const firstEmptyCell = findFirstEmptyCell(row);
-      const allRows = document.querySelectorAll(".row"); // Adjust selector for your rows
+      const allRows = document.querySelectorAll(".word-row"); // Adjust selector for your rows
       const firstCellsFilled = Array.from(allRows).every(row => {
         const firstCell = row.querySelector(".cell"); // Adjust selector for first cell
         return firstCell && firstCell.classList.contains("filled");
@@ -177,15 +180,6 @@ function setupDragAndDrop() {
 
       // Check if the first empty cell is not the first cell
       const firstCellInRow = row.querySelector(".cell");
-      const isDroppingBeyondFirstCell = firstEmptyCell !== firstCellInRow;
-
-      // Enforce the rule
-      if (isDroppingBeyondFirstCell && !firstCellsFilled) {
-        errorSound.play();
-        // Prevent the drop and notify the user (optional)
-        alert("You must place the first letter of all words first!");
-        return;
-      }
 
       // Proceed with the drop
       if (firstEmptyCell && currentTile) {
@@ -214,7 +208,7 @@ function setupDragAndDrop() {
         // Make the next latest discarded tile draggable
         const discardedTiles = Array.from(discardPile.children);
         discardedTiles.forEach((tile, index) => {
-          tile.draggable = index === discardedTiles.length - 1; // Only make the first tile draggable
+          tile.draggable = index === 0; // Only make the first tile draggable
         });
       }
     });
@@ -231,12 +225,12 @@ function setupDragAndDrop() {
 
     if (currentTile) {
       // Move the current tile to the discard pile
-      discardPile.append(currentTile);
+      discardPile.prepend(currentTile);
 
       // Ensure only the first (newest) tile is draggable
       const discardedTiles = Array.from(discardPile.children);
       discardedTiles.forEach((tile, index) => {
-        tile.draggable = index === discardedTiles.length - 1; // Only make the first tile draggable
+        tile.draggable = index === 0; // Only make the first tile draggable
       });
 
       queueTile = null; // Reset queueTile
@@ -260,7 +254,7 @@ function setupDragAndDrop() {
       // Update draggability for remaining tiles in the discard pile
       const discardedTiles = Array.from(discardPile.children);
       discardedTiles.forEach((tile, index) => {
-        tile.draggable = index === discardedTiles.length - 1; // Ensure the first tile remains draggable
+        tile.draggable = index === 0; // Ensure the first tile remains draggable
       });
     }
   });
@@ -274,6 +268,8 @@ function findFirstEmptyCell(row) {
 // Start the game
 function startGame() {
   resetGame();
+  drawRandomConsonants();
+  updateTileCounts();
   startCountdown();
   timer = setInterval(() => {
     if (!queueTile) {
@@ -288,12 +284,45 @@ function drawTile() {
     const tile = letterPool.firstChild;
     queueTile = tile;
     letterRack.appendChild(tile);
-    console.log("Tile drawn:", tile);
+    const letter = tile.getAttribute("data-letter");
+    removeLetterFromSet(letter);
+    updateTileCounts();
   } else {
     clearInterval(timer);
     alert("No more tiles in the pool!");
     endGame();
   }
+}
+
+function drawRandomConsonants() {
+  const consonants = Array.from(letterPool.children).filter(tile => {
+    const letter = tile.textContent.toUpperCase();
+    return !["A", "E", "I", "O", "U"].includes(letter); // Filter out vowels
+  });
+
+  const randomTile = consonants[0];
+  const letter = randomTile.getAttribute("data-letter");
+  removeLetterFromSet(letter);
+
+  wordRows = document.querySelectorAll('.word-row');
+  wordRows.forEach((row, index) => {
+    const randomTile = consonants[index]; // Assign a unique consonant to each row
+    const letter = randomTile.getAttribute("data-letter");
+
+    const firstEmptyCell = findFirstEmptyCell(row);
+    if (firstEmptyCell) {
+      firstEmptyCell.textContent = letter;
+      firstEmptyCell.setAttribute("data-letter", letter);
+      firstEmptyCell.classList.remove("empty", "drag-over");
+      firstEmptyCell.classList.add("filled");
+      if (bonusLetters.includes(letter)) {
+        firstEmptyCell.classList.add("bonus");
+      }
+
+      // Remove the used tile from the pool
+      letterPool.removeChild(randomTile);
+    }
+  });
 }
 
 // Submit a word for a specific row
@@ -331,6 +360,8 @@ async function submitWord(row) {
     score += wordScore;
     scoreDisplay.textContent = score;
 
+    addWordToList(word);
+
     // Clear the row
     cells.forEach(cell => {
       cell.textContent = "";
@@ -340,14 +371,73 @@ async function submitWord(row) {
       cell.classList.add("empty");
     });
 
+    // Move the last tile from the discard pile to the first slot of the row
+    const discardPileArray = getDiscardPileArray(); // Create the array from the current discard pile
+    if (discardPileArray.length > 0) {
+      const lastTile = discardPileArray.pop(); // Remove the last tile from the discard pile
+      const firstCell = cells.find(cell => cell.getAttribute("data-letter") === ""); // Find the first empty slot
+
+      if (firstCell) {
+        firstCell.textContent = lastTile.letter; // Set the letter in the cell
+        firstCell.setAttribute("data-letter", lastTile.letter); // Update the data-letter attribute
+        firstCell.classList.remove("empty");
+        firstCell.classList.add("filled");
+
+        // If the tile is a bonus tile, update its appearance
+        if (bonusLetters.includes(lastTile.letter.toUpperCase())) {
+          firstCell.classList.add("bonus");
+        }
+        removeFromDiscardPile(); // Remove the last tile from the discard pile
+        // Ensure only the first (newest) tile is draggable
+        const discardedTiles = Array.from(discardPile.children);
+        discardedTiles.forEach((tile, index) => {
+          tile.draggable = index === 0; // Only make the first tile draggable
+        });
+      }
+    }
+
   } else {
     errorSound.play();
     alert(`"${word}" is not a valid word!`);
   }
 }
 
+function addWordToList(word) {
+    const listItem = document.createElement('li');
+    listItem.textContent = word;
+    listItem.classList.add('list-group-item');
+    submittedWordsList.appendChild(listItem);
+}
+
+// Function to create an array from the child tiles in the discard pile
+function getDiscardPileArray() {
+  const childTiles = discardPile.children;
+
+  // Convert child elements to an array of objects with letter data
+  return Array.from(childTiles).map(tile => ({
+    letter: tile.getAttribute("data-letter"),
+    isBonus: tile.classList.contains("bonus"),
+  }));
+}
+
+// Function to remove the last tile from the discard pile
+function removeFromDiscardPile() {
+  const discardPileDiv = document.getElementById("discardPile");
+  const lastTileDiv = discardPileDiv.lastElementChild; // Get the last tile in the DOM
+
+  if (lastTileDiv) {
+    const lastTile = {
+      letter: lastTileDiv.getAttribute("data-letter"),
+      isBonus: lastTileDiv.classList.contains("bonus"),
+    };
+
+    discardPileDiv.removeChild(lastTileDiv); // Remove from the DOM
+    return lastTile; // Return the removed tile as an object
+  }
+  return null; // Return null if the discard pile is empty
+}
+
 function calculateDiscardPenalties() {
-  const discardPile = document.getElementById("discardPile");
   const unusedLetters = discardPile.children.length;
   const penalty = -unusedLetters; // -1 point per unused letter
 
@@ -379,6 +469,31 @@ function updateTimerDisplay() {
   timeLeftDisplay.textContent = timeLeft;
 }
 
+function updateTileCounts() {
+  // Clear the previous grid
+  tileCountsGrid.innerHTML = "";
+
+  // Iterate through the letterSet and create grid items
+  for (const [letter, count] of Object.entries(letterSet)) {
+    const gridItem = document.createElement("div");
+    gridItem.classList.add("grid-item");
+    gridItem.innerHTML = `
+      <span>${letter}</span>
+      <span>${count}</span>
+    `;
+    tileCountsGrid.appendChild(gridItem);
+  }
+}
+
+function removeLetterFromSet(letter) {
+  if (letterSet[letter] > 0) {
+    letterSet[letter] -= 1;
+    updateTileCounts(); // Update the grid after modification
+  } else {
+    console.log(`No more "${letter}" remaining in the pool.`);
+  }
+}
+
 // Reset the game
 function resetGame() {
   clearInterval(timer); // Clear the tile drawing timer
@@ -399,15 +514,10 @@ function resetGame() {
   initializeGameBoard(); // Reset the game board
 }
 
-// Set up event listeners
-function setupEventListeners() {
-  playButton.addEventListener("click", startGame);
-}
-
 // Initialize the game
 initializePool();
 initializeGameBoard();
-setupEventListeners();
+playButton.addEventListener("click", startGame);
 
 
 async function validateWord(word) {
@@ -423,7 +533,7 @@ async function validateWord(word) {
     }
     return false; // The word does not exist
   } catch (error) {
-    console.error("Error validating word:", error);
+    alert("Error validating word:", error);
     return false; // Return false if there's an error
   }
 }
