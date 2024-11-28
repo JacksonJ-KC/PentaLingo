@@ -280,7 +280,6 @@ function startGame() {
 
 // Draw a tile from the pool
 function drawTile() {
-  console.log(queueTile)
   if (queueTile) {
     return;
   }
@@ -379,7 +378,7 @@ async function submitWord(row) {
     // Move the last tile from the discard pile to the first slot of the row
     const discardPileArray = getDiscardPileArray(); // Create the array from the current discard pile
     if (discardPileArray.length > 0) {
-      const lastTile = discardPileArray.pop(); // Remove the last tile from the discard pile
+      const lastTile = discardPileArray.shift(); // Remove the last tile from the discard pile
       const firstCell = cells.find(cell => cell.getAttribute("data-letter") === ""); // Find the first empty slot
 
       if (firstCell) {
@@ -398,6 +397,36 @@ async function submitWord(row) {
         discardedTiles.forEach((tile, index) => {
           tile.draggable = index === 0; // Only make the first tile draggable
         });
+      }
+    }
+
+    else {
+
+      if (queueTile) {
+        const letter = queueTile.getAttribute("data-letter");
+        const firstCell = cells.find(cell => cell.getAttribute("data-letter") === ""); // Find the first empty slot
+
+        if (firstCell) {
+          firstCell.textContent = letter; // Set the letter in the cell
+          firstCell.setAttribute("data-letter", letter); // Update the data-letter attribute
+          firstCell.classList.remove("empty");
+          firstCell.classList.add("filled");
+
+          // If the tile is a bonus tile, update its appearance
+          if (bonusLetters.includes(letter.toUpperCase())) {
+            firstCell.classList.add("bonus");
+          }
+
+          letterRack.removeChild(queueTile); // Remove the tile from the rack
+          queueTile = null; // Reset queueTile
+          drawTile(); // Draw a new tile after a valid drop
+        }
+      }
+
+      else {
+        clearInterval(timer);
+        alert("No more tiles in the pool!");
+        endGame();
       }
     }
 
@@ -491,12 +520,8 @@ function updateTileCounts() {
 }
 
 function removeLetterFromSet(letter) {
-  if (letterSet[letter] > 0) {
-    letterSet[letter] -= 1;
-    updateTileCounts(); // Update the grid after modification
-  } else {
-    console.log(`No more "${letter}" remaining in the pool.`);
-  }
+  letterSet[letter] -= 1;
+  updateTileCounts(); // Update the grid after modification
 }
 
 // Reset the game
