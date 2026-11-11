@@ -64,3 +64,37 @@ test('final personal-best celebration uses the score after discard penalties',()
   run('startRound();s.score=20;endRound()');
   assert.equal(run('fx.finalBest'),true);
 });
+
+test('one drag cannot consume multiple queue tiles or trigger a follow-up pointer click',()=>{
+  const run=app();
+  run("startRound();const drag={preventDefault(){},stopPropagation(){},dataTransfer:{setData(){}}};const front=s.queue;const next=s.bag[0];beginTileDrag(drag,'queue');dropTile(drag,0);dropTile(drag,1);clickLane({detail:1},2)");
+  assert.equal(run('s.rows[0].length'),2);
+  assert.equal(run('s.rows[1].length+s.rows[2].length'),2);
+  assert.equal(run('s.rows[0][1]===front'),true);
+  assert.equal(run('s.queue.letter===next'),true);
+  assert.equal(run('dragSession===null'),true);
+  run('suppressClickUntil=0;clickLane({detail:1},2)');
+  assert.equal(run('s.rows[2].length'),2);
+});
+test('external and stale drags cannot place tiles, and discarded tiles move only once',()=>{
+  const run=app();
+  run("startRound();const drag={preventDefault(){},stopPropagation(){},dataTransfer:{setData(){}}};dropTile(drag,0)");
+  assert.equal(run('s.rows[0].length'),1);
+  run("beginTileDrag(drag,'queue');place(1);dropTile(drag,0);endTileDrag()");
+  assert.equal(run('s.rows[0].length'),1);
+  run("discard();const top=s.discard[0];beginTileDrag(drag,'discard');dropTile(drag,0);dropTile(drag,2)");
+  assert.equal(run('s.rows[0][1]===top'),true);
+  assert.equal(run('s.discard.length'),0);
+  assert.equal(run('s.rows[2].length'),1);
+});
+test('queue previews follow the seeded sequence and shrink safely at the end',()=>{
+  const run=app();
+  run("loadCode('C-PREVIEW');startRound();const lookahead=[s.queue.letter,...s.bag.slice(0,4)]");
+  assert.equal(run("$('queuePreview').children.length"),4);
+  assert.equal(run("$('queuePreview').children.map(p=>p.textContent).join('')===s.bag.slice(0,4).join('')"),true);
+  run('place(0);discard()');
+  assert.equal(run('s.rows[0][1].letter===lookahead[0]&&s.discard[0].letter===lookahead[1]&&s.queue.letter===lookahead[2]'),true);
+  run("s.bag=['Z'];render();place(1);place(1)");
+  assert.equal(run('s.queue'),null);
+  assert.equal(run("$('queuePreview').children.every(p=>p.textContent==='·')"),true);
+});

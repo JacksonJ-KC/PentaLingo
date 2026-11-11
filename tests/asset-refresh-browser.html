@@ -1,0 +1,27 @@
+﻿<!doctype html><meta charset="utf-8"><title>Automatic asset refresh checks</title>
+<iframe id="app" style="width:390px;height:844px;border:0"></iframe><pre id="results">Loading…</pre>
+<script>
+const frame=document.getElementById('app'),results=[];
+const check=(name,pass)=>results.push({name,pass});
+function visit(){return new Promise(resolve=>{frame.onload=()=>resolve();frame.src='../index.html';});}
+function assets(){return [...frame.contentDocument.querySelectorAll('link[rel="stylesheet"],script[src]')].map(el=>new URL(el.href||el.src));}
+(async()=>{
+ try{
+ await visit();
+ let list=assets(),first=list[0].searchParams.get('v');
+ check('All seven game assets have a shared fresh version',list.length===7&&!!first&&list.every(url=>url.searchParams.get('v')===first));
+ check('Dependency scripts finish loading before interaction',frame.contentWindow.eval('typeof PentaCore==="object"&&typeof GameAudio==="function"&&typeof GameEffects==="function"'));
+ check('Board initializes after versioned loading',frame.contentDocument.querySelectorAll('.lane').length===5);
+ frame.contentDocument.getElementById('helpButton').click();
+ check('Help button works after loading',frame.contentDocument.getElementById('helpDialog').open);
+ frame.contentDocument.getElementById('helpDialog').close();
+ frame.contentDocument.getElementById('playButton').click();
+ check('Start button works after loading',frame.contentWindow.eval('s.active'));
+ await new Promise(resolve=>setTimeout(resolve,10));await visit();list=assets();
+ const next=list[0].searchParams.get('v');
+ check('An ordinary revisit gets a new version without a hard refresh',!!next&&next!==first&&list.every(url=>url.searchParams.get('v')===next));
+ check('Revisited game is initialized and styled',frame.contentDocument.querySelectorAll('.lane').length===5&&frame.contentWindow.getComputedStyle(frame.contentDocument.querySelector('.word-row')).display==='flex');
+ }catch(error){results.push({name:error.stack,pass:false});}
+ document.getElementById('results').textContent=JSON.stringify(results,null,2);
+})();
+</script>

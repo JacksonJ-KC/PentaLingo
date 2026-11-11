@@ -1,6 +1,30 @@
 ﻿'use strict';
 const $=id=>document.getElementById(id), C=PentaCore, audio=new GameAudio(), fx=new GameEffects();
 let mode='classic',s=null,clock=null,epoch=0,selection='queue',challenge=null;
+let dragSession=null,suppressClickUntil=0;
+function beginTileDrag(event,source){
+  const dragged=source==='queue'?s?.queue:s?.discard[0];
+  if(!live()||!dragged){event.preventDefault();return;}
+  selection=source;
+  dragSession={round:s,version:epoch,source,tile:dragged,used:false};
+  if(event.dataTransfer){event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',dragged.letter);}
+}
+function dropTile(event,index=null){
+  event.preventDefault();event.stopPropagation();
+  const gesture=dragSession;
+  if(!gesture||gesture.used||gesture.round!==s||gesture.version!==epoch)return;
+  const current=gesture.source==='queue'?s.queue:s.discard[0];
+  if(current!==gesture.tile)return;
+  // A drop owns one specific tile, never whichever tile happens to be next.
+  gesture.used=true;dragSession=null;suppressClickUntil=Date.now()+350;
+  selection=gesture.source;
+  if(index!==null)place(index);else if(gesture.source==='queue')discard();
+}
+function endTileDrag(){if(dragSession)suppressClickUntil=Date.now()+350;dragSession=null;}
+function clickLane(event,index){
+  if(dragSession||(event.detail>0&&Date.now()<suppressClickUntil))return;
+  place(index);
+}
 const safeRead=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
 const safeWrite=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
 let records=safeRead('pentalingo-rounds-v2',[]);if(!Array.isArray(records))records=[];
@@ -14,6 +38,7 @@ function seedCode(){return `${mode==='sprint'?'S':'C'}-${Math.random().toString(
 function startRound(){
   if(s?.active)return;
   audio.unlock();epoch++;clearInterval(clock);
+  dragSession=null;suppressClickUntil=0;
   fx.stage();
   const code=challenge||(mode==='daily'?`D-${new Date().toISOString().slice(0,10)}`:seedCode());
   const bag=C.deck(code),rows=Array.from({length:5},()=>{const index=bag.findIndex(l=>!'AEIOU'.includes(l));return [tile(bag.splice(index,1)[0])];});
@@ -78,6 +103,7 @@ function endRound(){
 function tileButton(t,selected,disabled=false){const el=document.createElement('button');el.type='button';el.className=`tile${C.bonus.includes(t.letter)&&!t.blank?' bonus':''}${t.blank?' blank':''}${selected?' selected':''}`;el.textContent=t.letter;el.disabled=disabled;el.setAttribute('aria-label',`${t.blank?'Wildcard ':''}${t.letter}`);return el;}
 function render(){
   const active=!!s?.active;
+  $('discardPile').dataset.count=s?.discard.length||0;
   $('arena').classList.toggle('is-playing',active);
   $('milestoneProgress').textContent=s?.milestone?'BONUS BANKED!':`${Math.min(s?.words.length||0,5)} / 5 · +5 bonus`;
   $('milestoneLabel').textContent=s?.milestone?'FIVE-WORD CLUB':'NEXT MILESTONE';
@@ -86,7 +112,15 @@ function render(){
   $('playButton').disabled=active;$('playButton').textContent=s?'Play again ↗':'Start round ↗';$('finishButton').disabled=!active;
   document.querySelectorAll('[data-mode]').forEach(b=>{b.disabled=active;b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',b.dataset.mode===mode);});
   $('modeLabel').textContent=`${mode.toUpperCase()} ROUND`;$('roundTitle').textContent=active?'One letter. So many possibilities.':'Your next great word awaits.';$('roundHint').textContent=active?'Tap a lane to place. Bank a word to score.':'Start a round, then tap a lane to place your letter.';
-  const queue=$('queueTile');queue.textContent=s?.queue?.letter||'?';queue.disabled=!active||!s.queue;queue.className=`tile queue${selection==='queue'&&active?' selected':''}${s?.queue&&C.bonus.includes(s.queue.letter)?' bonus':''}`;queue.setAttribute('aria-label',s?.queue?`Select queue letter ${s.queue.letter}`:'Queue empty');queue.setAttribute('aria-pressed',selection==='queue');queue.draggable=active&&!!s.queue;
+  const queue=$('queueTile');queue.textContent=s?.queue?.letter||'?';queue.disabled=!active||!s.queue;queue.className=`tile queue${selection==='queue'&&active?' selected':''}${s?.queue&&C.bonus.includes(s.queue.letter)?' bonus':''}`;queue.setAttribute('aria-label',s?.queue?`Select front queue letter ${s.queue.letter}`:'Queue empty');queue.setAttribute('aria-pressed',selection==='queue');queue.draggable=active&&!!s.queue;
+  $('queuePreview').replaceChildren();
+  for(let i=0;i<4;i++){
+    const letter=s?.bag[i],preview=document.createElement('span');
+    preview.className=`tile preview-tile${letter&&C.bonus.includes(letter)?' bonus':''}${!letter?' empty':''}`;
+    preview.textContent=letter||'·';preview.draggable=false;
+    preview.setAttribute('aria-label',letter?`Queue position ${i+2}: ${letter}, preview only`:`Queue position ${i+2}: empty`);
+    $('queuePreview').append(preview);
+  }
   $('tilesLeft').textContent=`${s?.bag.length??Object.values(C.letters).reduce((a,b)=>a+b,0)} tiles in the bag`;
   $('discardButton').disabled=!active||!s.queue;$('wildButton').disabled=!active||!s.blanks;$('wildButton').textContent=`${selection==='wild'?'Selected':'Use blank'} · ${s?.blanks??2} left`;$('wildButton').setAttribute('aria-pressed',selection==='wild');
   $('wildLetter').disabled=!active;
@@ -95,9 +129,9 @@ function render(){
     let lane=$('gameBoard').children[i];
     if(!lane){
     lane=document.createElement('div');lane.className='lane';const number=document.createElement('span');number.className='lane-number';number.textContent=String(i+1).padStart(2,'0');
-    const row=document.createElement('button');row.type='button';row.className='word-row';row.disabled=!active||s.pending.has(i);row.setAttribute('aria-label',`Place selected letter in lane ${i+1}: ${s?.rows[i].map(t=>t.letter).join('')||'empty'}`);row.onclick=()=>place(i);
+    const row=document.createElement('button');row.type='button';row.className='word-row';row.disabled=!active||s.pending.has(i);row.setAttribute('aria-label',`Place selected letter in lane ${i+1}: ${s?.rows[i].map(t=>t.letter).join('')||'empty'}`);row.onclick=e=>clickLane(e,i);
     for(let j=0;j<10;j++){const t=s?.rows[i][j],cell=document.createElement('span');cell.className=`tile${!t?' empty':t.blank?' blank':C.bonus.includes(t.letter)?' bonus':''}`;cell.textContent=t?.letter||'';row.append(cell);}
-    row.ondragover=e=>e.preventDefault();row.ondrop=e=>{e.preventDefault();place(i);};
+    row.ondragover=e=>{if(dragSession&&!dragSession.used)e.preventDefault();};row.ondrop=e=>dropTile(e,i);
     const submit=document.createElement('button');submit.className='bank';submit.textContent=s?.pending.has(i)?'…':'Bank';submit.disabled=!active||s.pending.has(i);submit.setAttribute('aria-label',`Bank word in lane ${i+1}`);submit.onclick=()=>bank(i);lane.append(number,row,submit);$('gameBoard').append(lane);
     }
     const row=lane.children[1],submit=lane.children[2];
@@ -111,7 +145,7 @@ function render(){
     submit.textContent=s?.pending.has(i)?'…':'Bank';submit.disabled=!active||s.pending.has(i);
     lane.classList.toggle('ready',active&&s.rows[i].length>=4);lane.classList.toggle('checking',active&&s.pending.has(i));
   }
-  $('discardPile').replaceChildren();s?.discard.forEach((t,i)=>{const b=tileButton(t,i===0&&selection==='discard',!active||i!==0);b.onclick=()=>{selection='discard';render();status('Discard selected. Tap a lane to use it.');};b.draggable=active&&i===0;b.ondragstart=()=>{selection='discard';};$('discardPile').append(b);});
+  $('discardPile').replaceChildren();s?.discard.forEach((t,i)=>{const b=tileButton(t,i===0&&selection==='discard',!active||i!==0);if(i===0)b.setAttribute('aria-label',`Reuse ${t.letter}; ${s.discard.length} discarded tiles, ${s.discard.length} point penalty`);b.onclick=()=>{selection='discard';render();status('Discard selected. Tap a lane to use it.');};b.draggable=active&&i===0;b.ondragstart=e=>beginTileDrag(e,'discard');$('discardPile').append(b);});
   $('roundCode').textContent=s?`Round: ${s.code}`:challenge?`Loaded: ${challenge}`:'Start a round to get your code.';
   $('shareButton').disabled=!s;$('submittedWordsList').replaceChildren();
   if(!s?.words.length){const li=document.createElement('li');li.className='empty-state';li.textContent='Your word wins will appear here.';$('submittedWordsList').append(li);}
@@ -123,7 +157,9 @@ function render(){
 async function copy(text){try{await navigator.clipboard.writeText(text);status('Copied! Send it to a friend.');}catch{window.prompt('Copy and share:',text);}}
 function link(){const url=new URL(location.href);url.searchParams.set('challenge',s.code);return url.href;}
 function loadCode(raw){if(s?.active){status('Finish this round before loading a challenge.',true);return;}const code=raw.trim().toUpperCase();if(!/^(?:[CS]-[A-Z0-9]{1,20}|D-\d{4}-\d{2}-\d{2})$/.test(code)){status('Use a round code such as C-ABC123, S-ABC123 or D-2026-11-11.',true);return;}challenge=code;mode=code.startsWith('S-')?'sprint':code.startsWith('D-')?'daily':'classic';render();status('Challenge loaded. Start the round when you’re ready.');}
-$('playButton').onclick=startRound;$('finishButton').onclick=endRound;$('discardButton').onclick=discard;$('queueTile').onclick=()=>{selection='queue';render();};$('queueTile').ondragstart=()=>{selection='queue';};$('discardPile').ondragover=e=>e.preventDefault();$('discardPile').ondrop=e=>{e.preventDefault();if(selection==='queue')discard();};
+$('playButton').onclick=startRound;$('finishButton').onclick=()=>{if($('mobileMenu').open)$('mobileMenu').close();endRound();};$('discardButton').onclick=discard;$('queueTile').onclick=()=>{if(dragSession)return;selection='queue';render();};$('queueTile').ondragstart=e=>beginTileDrag(e,'queue');$('discardPile').ondragover=e=>{if(dragSession&&!dragSession.used&&dragSession.source==='queue')e.preventDefault();};$('discardPile').ondrop=e=>dropTile(e);
+document.addEventListener('dragend',endTileDrag);
+document.addEventListener('pointerdown',()=>{suppressClickUntil=0;},true);
 $('wildButton').onclick=()=>{if(live()&&s.blanks){selection='wild';render();status('Wildcard selected. Choose a letter, then tap a lane.');}};
 $('helpButton').onclick=()=>$('helpDialog').showModal();document.querySelectorAll('.dialog-close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 $('loadButton').onclick=()=>loadCode($('challengeCode').value);$('shareButton').onclick=()=>s&&copy(link());$('copyResult').onclick=()=>s&&copy(`PentaLingo · ${s.score} points · ${s.words.length} words\nBeat my ${s.mode} round: ${link()}`);
@@ -138,4 +174,32 @@ $('soundButton').onclick=()=>{audio.unlock();audio.sound=!audio.sound;audio.effe
 if(prefs?.music)document.addEventListener('pointerdown',()=>{audio.setMusic(true);audioLabels();},{once:true});audioLabels();
 document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.repeat||document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(/^[1-5]$/.test(e.key)){e.preventDefault();place(Number(e.key)-1);}if(e.key.toLowerCase()==='d'){e.preventDefault();discard();}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+// Move the existing controls rather than clone them, retaining handlers and round state.
+if(typeof window!=='undefined'){
+  const mobileLayout=window.matchMedia('(max-width: 850px), (max-width: 1024px) and (max-height: 500px)');
+  const extras=Array.from(document.querySelector('aside').children);
+  const homes=[
+    [document.querySelector('.header-actions'),'mobileSettings'],
+    [document.querySelector('.modes'),'mobileRoundMode'],
+    [$('finishButton'),'mobileRoundActions'],
+    [document.querySelector('.milestone-track'),'mobileMilestone'],
+    [extras[0],'mobileFriends'],[extras[1],'mobileScores'],[extras[2],'mobileWords'],[extras[3],'mobileBag'],
+    [$('discardPile'),'mobileDiscardSlot']
+  ].map(([node,target])=>{const anchor=document.createComment('Desktop control position');node.before(anchor);return {node,target,anchor};});
+  let appliedMobileLayout=null;
+  function syncMobileLayout(){
+    if(appliedMobileLayout===mobileLayout.matches)return;
+    appliedMobileLayout=mobileLayout.matches;
+    if(!mobileLayout.matches&&$('mobileMenu').open)$('mobileMenu').close();
+    for(const {node,target,anchor} of homes){if(mobileLayout.matches)$(target).append(node);else anchor.after(node);}
+  }
+  syncMobileLayout();mobileLayout.addEventListener('change',syncMobileLayout);window.addEventListener('resize',syncMobileLayout);
+  $('mobileMenuButton').onclick=()=>$('mobileMenu').showModal();
+  const tabs=Array.from(document.querySelectorAll('[data-mobile-tab]'));
+  function selectTab(tab){for(const item of tabs){const selected=item===tab;item.setAttribute('aria-selected',String(selected));item.tabIndex=selected?0:-1;$(`pane-${item.dataset.mobileTab}`).hidden=!selected;}}
+  for(const [index,tab] of tabs.entries()){
+    tab.onclick=()=>selectTab(tab);
+    tab.onkeydown=event=>{let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();selectTab(tabs[next]);tabs[next].focus();};
+  }
+}
 render();const initialCode=new URL(location.href).searchParams.get('challenge');if(initialCode){$('challengeCode').value=initialCode;loadCode(initialCode);}

@@ -22,7 +22,7 @@ The Daily challenge changes at midnight UTC, which may be a different time where
 
 ## How to play
 
-1. **Press Start round.** Your five lanes each begin with a letter. The next letter to use appears in the queue above them.
+1. **Press Start round.** Your five lanes each begin with a letter. Your next five tiles appear in the queue above them. Only the front tile can be played or discarded; the other four help you plan ahead. Each time you use the front tile, the queue moves forward.
 2. **Build a word.** Tap or click a lane to add the queue letter to its end. On a computer, you can also drag the letter onto a lane. Words must be **4–10 letters long**.
 3. **Skip a letter if you need to.** Press **Discard queue** to set it aside and get the next letter. To reuse a discard, tap the newest letter in the discard stack, then tap a lane. Only the newest discard is available. Tap the queue letter to switch back.
 4. **Bank your word.** When a lane spells an English word, press its **Bank** button to collect your points. You can score each word only once per round. The lane clears so you can build another word, starting with the newest discard if there is one.
@@ -70,11 +70,11 @@ Your scores won’t follow you to another device or browser. Clearing your brows
 
 ## Playing on your phone
 
-Tap a lane to place a letter—there’s no need to drag. Each lane has its own large **Bank** button below the letters.
+Tap a lane to place a letter—there’s no need to drag. Each lane has its own **Bank** button beside the letters.
 
-During a round, your score, timer, and queue stay at the top while you scroll through the lanes. Turn your phone sideways if you prefer a wider view; in landscape, the panel scrolls with the board to leave more space for play.
+The entire game fits on one screen: all five lanes, your score, timer, five-tile queue, discard control, and wildcards. The newest discard sits beside the queue under **REUSE**—tap it, then tap a lane. Turn your phone sideways for a wider board; your round continues without restarting.
 
-You can still zoom in using your browser. Challenges, scores, and your word collection are below the game board.
+Use **Menu** for round options, challenges, scores, your word collection, instructions, and sound settings. These open over the game without scrolling the play area. Choose **Round** in the menu to finish early or check your milestone and remaining letters. The clock keeps running while the menu is open. Browser zoom is still available.
 
 ## Feel the streak
 

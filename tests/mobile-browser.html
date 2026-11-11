@@ -1,26 +1,49 @@
-﻿<!doctype html><meta charset="utf-8"><title>Mobile layout checks</title>
+﻿<!doctype html><meta charset="utf-8"><title>Single-screen mobile checks</title>
 <iframe id="app" src="../index.html" style="border:0;width:390px;height:844px"></iframe><pre id="results">Loading…</pre>
 <script>
 app.onload=async()=>{
  const win=app.contentWindow,doc=app.contentDocument,results=[];
  const check=(name,pass)=>results.push({name,pass});
+ const wait=()=>new Promise(resolve=>setTimeout(resolve,110));
+ const fits=el=>{const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&r.left>=-1&&r.top>=-1&&r.right<=win.innerWidth+1&&r.bottom<=win.innerHeight+1;};
  try{
- for(const width of [320,360,390,540,768]){
- app.style.width=width+'px';await new Promise(r=>setTimeout(r,100));
- check(width+'px: no page overflow',doc.documentElement.scrollWidth<=width);
- const row=doc.querySelector('.word-row'),bank=doc.querySelector('.bank');
- check(width+'px: lane and Bank tap targets',row.getBoundingClientRect().height>=44&&bank.getBoundingClientRect().height>=44);
+ app.style.width='320px';app.style.height='568px';await wait();
+ check('Idle mobile screen shows Start and all five lanes without scrolling',fits(doc.getElementById('playButton'))&&[...doc.querySelectorAll('.word-row')].every(fits)&&doc.scrollingElement.scrollHeight<=568);
+ doc.getElementById('mobileMenuButton').click();doc.querySelector('[data-mode="sprint"]').click();doc.getElementById('mobileMenu').close();
+ doc.getElementById('playButton').click();win.eval('fx.setFull(false);discard()');
+ check('Round mode chosen from the menu starts correctly',win.eval('s.active&&s.mode==="sprint"'));
+ for(const [width,height] of [[320,480],[320,568],[360,640],[390,664],[390,844],[412,732],[768,1024],[568,320],[844,390],[915,412],[1024,480]]){
+ app.style.width=width+'px';app.style.height=height+'px';await wait();
+ const label=width+'×'+height;
+ check(label+': no page scroll in either direction',doc.scrollingElement.scrollHeight<=height+1&&doc.scrollingElement.scrollWidth<=width+1);
+ check(label+': all five lanes and Bank buttons are visible',[...doc.querySelectorAll('.word-row,.bank')].every(fits));
+ check(label+': placement and Bank targets remain at least 44px high',[...doc.querySelectorAll('.word-row,.bank')].every(el=>el.getBoundingClientRect().height>=44));
+ check(label+': queue, reuse, wildcards, discard and menu fit on screen',['queueTile','queuePreview','discardButton','wildLetter','wildButton','mobileMenuButton'].every(id=>fits(doc.getElementById(id)))&&fits(doc.querySelector('#discardPile button')));
+ check(label+': essential controls are not covered by another element',[...doc.querySelectorAll('.word-row,.bank'),...['queueTile','discardButton','wildLetter','wildButton','mobileMenuButton'].map(id=>doc.getElementById(id))].every(el=>{const r=el.getBoundingClientRect(),hit=doc.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return el===hit||el.contains(hit);}));
  }
- app.style.width='320px';await new Promise(r=>setTimeout(r,100));
- doc.getElementById('playButton').click();
+ app.style.width='320px';app.style.height='568px';await wait();
  const row=doc.querySelector('.word-row');row.focus();row.click();
- check('Board controls retain focus after placement',doc.activeElement===row);
- check('Round dashboard sticks on phones',win.getComputedStyle(doc.querySelector('.round-dashboard')).position==='sticky');
+ check('Moves preserve lane focus',doc.activeElement===row);
  for(let i=0;i<8;i++)row.click();
- check('Ten-letter lane fits at 320px',row.lastElementChild.getBoundingClientRect().right<=row.getBoundingClientRect().right+1);
- doc.getElementById('finishButton').click();
- check('Result dialog opens',doc.getElementById('resultDialog').open);
- check('No overflow after a full lane and result',doc.documentElement.scrollWidth<=320);
+ check('Ten-letter words stay in their lane',row.lastElementChild.getBoundingClientRect().right<=row.getBoundingClientRect().right+1);
+ const score=win.eval('s.rows[0].length');
+ doc.getElementById('mobileMenuButton').click();
+ check('Menu opens without navigating or resetting the round',doc.getElementById('mobileMenu').open&&win.eval('s.active&&s.rows[0].length')===score);
+ doc.getElementById('tab-settings').click();
+ check('Settings tab exposes the actual working controls',!doc.getElementById('pane-settings').hidden&&fits(doc.getElementById('soundButton')));
+ const previousSound=doc.getElementById('soundButton').getAttribute('aria-pressed');doc.getElementById('soundButton').click();
+ check('Sound toggle still works from the menu',previousSound!==doc.getElementById('soundButton').getAttribute('aria-pressed'));
+ doc.getElementById('tab-friends').click();
+ check('Friends tab exposes challenges',!doc.getElementById('pane-friends').hidden&&fits(doc.getElementById('challengeCode')));
+ doc.getElementById('tab-scores').click();
+ check('Scores tab exposes score history and collected words',!doc.getElementById('pane-scores').hidden&&doc.getElementById('mobileScores').contains(doc.getElementById('leaderboard'))&&doc.getElementById('mobileWords').contains(doc.getElementById('submittedWordsList')));
+ doc.getElementById('mobileMenu').close();
+ app.style.width='1200px';app.style.height='900px';await wait();win.dispatchEvent(new win.Event('resize'));
+ check('Desktop restores sidebar, settings and discard to their original locations',doc.querySelector('aside').contains(doc.getElementById('leaderboard'))&&doc.querySelector('.header').contains(doc.getElementById('soundButton'))&&doc.getElementById('arena').contains(doc.getElementById('discardPile'))&&!doc.getElementById('mobileDiscardSlot').contains(doc.getElementById('discardPile')));
+ app.style.width='390px';app.style.height='664px';await wait();win.dispatchEvent(new win.Event('resize'));
+ check('Switching between desktop and mobile retains the round',win.eval('s.active&&s.rows[0].length')===score);
+ doc.getElementById('mobileMenuButton').click();doc.getElementById('tab-round').click();doc.getElementById('finishButton').click();
+ check('Finish from menu closes menu and opens results',!doc.getElementById('mobileMenu').open&&doc.getElementById('resultDialog').open);
  }catch(e){results.push({name:e.stack,pass:false});}
  document.getElementById('results').textContent=JSON.stringify(results,null,2);
 };

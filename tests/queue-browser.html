@@ -1,0 +1,40 @@
+﻿<!doctype html><meta charset="utf-8"><title>Queue and drag checks</title>
+<iframe id="app" src="../index.html" style="width:390px;height:844px;border:0"></iframe><pre id="results">Loading…</pre>
+<script>
+app.onload=async()=>{
+ const win=app.contentWindow,doc=app.contentDocument,results=[];
+ const check=(name,pass)=>results.push({name,pass});
+ const row=i=>doc.querySelectorAll('.word-row')[i];
+ const drag=(el,type,data)=>el.dispatchEvent(new win.DragEvent(type,{bubbles:true,cancelable:true,dataTransfer:data}));
+ try{
+ win.eval("loadCode('C-QUEUE');startRound();fx.setFull(false)");
+ const expected=win.eval('[s.queue.letter,...s.bag.slice(0,4)].join(\'\')');
+ check('Queue displays the playable front plus four future tiles',doc.getElementById('queueTile').textContent+doc.getElementById('queuePreview').textContent===expected);
+ check('Future tiles cannot be dragged or activated as buttons',[...doc.querySelectorAll('.preview-tile')].every(tile=>!tile.draggable&&tile.tagName==='SPAN')&&doc.querySelectorAll('#queuePreview button').length===0);
+ doc.querySelector('.preview-tile').click();
+ check('Clicking a preview does not change the queue',win.eval('[s.queue.letter,...s.bag.slice(0,4)].join(\'\')')===expected);
+ let transfer=new win.DataTransfer();drag(doc.getElementById('queueTile'),'dragstart',transfer);
+ drag(row(0),'drop',transfer);drag(row(1),'drop',transfer);
+ doc.getElementById('queueTile').dispatchEvent(new win.DragEvent('dragend',{bubbles:true}));
+ row(0).dispatchEvent(new win.MouseEvent('click',{bubbles:true,detail:1}));
+ check('One drag followed by duplicate drop and click places exactly one tile',win.eval('s.rows[0].length===2&&s.rows[1].length===1&&s.rows[0][1].letter')===expected[0]);
+ check('Front advances by just one position',doc.getElementById('queueTile').textContent===expected[1]);
+ row(1).dispatchEvent(new win.PointerEvent('pointerdown',{bubbles:true}));row(1).dispatchEvent(new win.MouseEvent('click',{bubbles:true,detail:1}));
+ check('A fresh click immediately after a drag still works',win.eval('s.rows[1].length===2&&s.rows[1][1].letter')===expected[1]);
+ const before=win.eval('s.rows[2].length');drag(row(2),'drop',new win.DataTransfer());
+ check('Unrelated external drops cannot place a queue tile',win.eval('s.rows[2].length')===before);
+ transfer=new win.DataTransfer();drag(doc.getElementById('queueTile'),'dragstart',transfer);
+ drag(doc.getElementById('discardPile'),'drop',transfer);drag(doc.getElementById('discardPile'),'drop',transfer);
+ check('Dragging into discard consumes one tile only',win.eval('s.discard.length===1&&s.discard[0].letter')===expected[2]);
+ transfer=new win.DataTransfer();drag(doc.querySelector('#discardPile button'),'dragstart',transfer);
+ drag(row(2),'drop',transfer);drag(row(3),'drop',transfer);
+ check('Discard dragging reuses only the captured tile',win.eval('s.discard.length===0&&s.rows[2].length===2&&s.rows[3].length===1'));
+ check('A removed discard source cannot leave input stuck',win.eval('dragSession===null'));
+ for(const width of [320,390,768]){
+ app.style.width=width+'px';await new Promise(resolve=>setTimeout(resolve,100));
+ check(width+'px: queue fits without horizontal page overflow',doc.documentElement.scrollWidth<=width&&doc.querySelector('.preview-tile:last-child').getBoundingClientRect().right<=width);
+ }
+ }catch(error){results.push({name:error.stack,pass:false});}
+ document.getElementById('results').textContent=JSON.stringify(results,null,2);
+};
+</script>

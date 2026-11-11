@@ -81,3 +81,31 @@ html[data-effects='calm'] *, html[data-effects='calm'] *::before, html[data-effe
 /* Keep edge tiles inside their lane even at the peak of the landing bounce. */
 .word-row .tile:first-child { transform-origin: left bottom; }
 .word-row .tile:last-child { transform-origin: right bottom; }
+
+/* Five-tile lookahead; preview spans are deliberately not interactive controls. */
+.queue-line { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.queue-preview { display: flex; align-items: center; gap: 6px; pointer-events: none; user-select: none; }
+.queue-preview .preview-tile { width: 32px; height: 39px; font-size: 20px; opacity: .72; border-bottom-width: 2px; }
+.queue-help { font-size: 10px; color: var(--muted); }
+.draw-area { min-width: 0; }
+@media (max-width: 1100px) {
+  .play-strip { flex-wrap: wrap; }
+  .draw-area { width: 100%; border-right: 0; padding-right: 0; }
+  .round-prompt { width: 100%; text-align: center; }
+  .round-prompt .actions { justify-content: center; }
+}
+@media (max-width: 850px) {
+  .arena.is-playing .play-strip { gap: 10px; }
+  .arena.is-playing .round-prompt { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; }
+  .arena.is-playing .round-prompt p { margin: 0; }
+  .arena.is-playing .round-prompt .actions { flex-shrink: 0; }
+  .queue-preview .preview-tile { min-height: 0; }
+}
+@media (max-width: 540px) {
+  .draw-area { gap: 7px; }
+  .queue-line { gap: 9px; }
+  .queue-preview { gap: 6px; }
+  .queue-preview .preview-tile { width: 33px; height: 38px; font-size: 21px; }
+  .queue-help { font-size: 10px; }
+  .arena.is-playing .round-prompt p { font-size: 10px; }
+}

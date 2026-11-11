@@ -1,8 +1,24 @@
 ﻿<!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101b24"><title>PentaLingo · Make every letter count</title><link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/effects.css"></head>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101b24"><title>PentaLingo · Make every letter count</title>
+<script>
+  // Keep this bootstrap inline: an old cached loader would recreate the same problem.
+  // GitHub Pages does not let this app set its own HTTP cache headers. A fresh,
+  // shared URL version on each visit bypasses old browser and CDN asset entries.
+  const assetVersion = Date.now().toString(36);
+  function assetUrl(path) { return `${path}?v=${assetVersion}`; }
+  for (const path of ['assets/style.css', 'assets/effects.css', 'assets/mobile.css']) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = assetUrl(path);
+    document.head.append(link);
+  }
+</script>
+<noscript><link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/effects.css"><link rel="stylesheet" href="assets/mobile.css"></noscript>
+</head>
 <body>
-<header class="header"><a class="brand" href="./"><span class="logo">P<span>5</span></span>PentaLingo<span class="tag">WORD ARCADE</span></a><div class="header-actions"><button id="helpButton" class="quiet">How to play</button><button id="soundButton" class="quiet" aria-pressed="false">Sound off</button><button id="musicButton" class="quiet" aria-pressed="false">Music off</button><button id="effectsButton" class="quiet" aria-pressed="true">Effects full</button></div></header>
+<header class="header"><a class="brand" href="./"><span class="logo">P<span>5</span></span>PentaLingo<span class="tag">WORD ARCADE</span></a><button id="mobileMenuButton" class="mobile-menu-button quiet" aria-label="Open game menu">☰ <span>Menu</span></button><div class="header-actions"><button id="helpButton" class="quiet">How to play</button><button id="soundButton" class="quiet" aria-pressed="false">Sound off</button><button id="musicButton" class="quiet" aria-pressed="false">Music off</button><button id="effectsButton" class="quiet" aria-pressed="true">Effects full</button></div></header>
 <main>
 <section class="intro"><div><p class="eyebrow">A LITTLE STRATEGY. A LOT OF WORDPLAY.</p><h1>Make every letter <em>count.</em></h1><p>Five lanes. One clock. How far can your vocabulary take you?</p></div><div class="daily-stamp"><span>YOUR NEXT PERSONAL BEST</span><strong>Starts with one letter.</strong></div></section>
 <div class="layout">
@@ -10,7 +26,7 @@
 <div class="arena-top"><div class="modes" role="group" aria-label="Game mode"><button data-mode="classic" class="active" aria-pressed="true">Classic <small>5 min</small></button><button data-mode="daily" aria-pressed="false">Daily <small>Same tiles for all</small></button><button data-mode="sprint" aria-pressed="false">Sprint <small>90 sec</small></button></div><span id="modeLabel" class="badge">CLASSIC ROUND</span></div>
 <div class="round-dashboard"><div class="stats"><div><span>SCORE</span><strong id="score">0</strong></div><div><span>TIME LEFT</span><strong id="timeLeft">5:00</strong></div><div><span>COMBO</span><strong id="combo">×1</strong></div><div><span>WORDS</span><strong id="wordCount">0</strong></div></div>
 <div class="time-track"><div id="timeBar"></div></div>
-<div class="play-strip"><div class="draw-area"><span class="eyebrow">NEXT LETTER</span><button id="queueTile" class="tile queue" aria-label="Queue empty" disabled>?</button><span id="tilesLeft" class="muted">80 tiles in the bag</span></div><div class="round-prompt"><h2 id="roundTitle">Your next great word awaits.</h2><p id="roundHint">Start a round, then tap a lane to place your letter.</p><div class="actions"><button id="playButton" class="primary">Start round <span>↗</span></button><button id="finishButton" class="quiet" disabled>Finish round</button></div></div></div>
+<div class="play-strip"><div class="draw-area"><span class="eyebrow">YOUR NEXT 5 TILES</span><div class="queue-line"><button id="queueTile" class="tile queue" aria-label="Queue empty" disabled>?</button><div id="queuePreview" class="queue-preview" role="group" aria-label="Upcoming tiles, preview only"></div></div><div id="mobileDiscardSlot" class="mobile-discard-slot"></div><span class="queue-help">Play the front tile · others are previews</span><span id="tilesLeft" class="muted">80 tiles in the bag</span></div><div class="round-prompt"><h2 id="roundTitle">Your next great word awaits.</h2><p id="roundHint">Start a round, then tap a lane to place your letter.</p><div class="actions"><button id="playButton" class="primary">Start round <span>↗</span></button><button id="finishButton" class="quiet" disabled>Finish round</button></div></div></div>
 <div class="reward-card" id="rewardCard" data-tier="1"><span class="reward-emblem" aria-hidden="true">✦</span><div><strong id="rewardTitle">FIND YOUR FLOW</strong><span id="rewardDetail">Bank words. Build a streak.</span></div><div class="combo-fuse" aria-hidden="true"><div id="comboFuse"></div></div></div></div><div class="milestone-track" aria-label="Five-word milestone"><span id="milestoneLabel">NEXT MILESTONE</span><div id="milestoneGems" aria-hidden="true"><i>✦</i><i>✦</i><i>✦</i><i>✦</i><i>✦</i></div><strong id="milestoneProgress">0 / 5 · +5 bonus</strong></div><div id="gameBoard" class="board" aria-label="Five word lanes"></div>
 <div class="tool-row"><button id="discardButton" class="quiet" disabled>↓ Discard queue</button><div class="wild-tool"><label for="wildLetter">Wildcard</label><select id="wildLetter" aria-label="Wildcard letter"></select><button id="wildButton" class="quiet" disabled>Use blank · 2 left</button></div></div>
 <div class="discard-heading"><span class="eyebrow">SECOND CHANCES</span><span class="muted">Tap the newest discard to select it · −1 each at the end</span></div><div id="discardPile" class="discard-pile" aria-label="Discard stack"></div>
@@ -23,7 +39,41 @@
 <details class="panel"><summary>What’s left in the bag?</summary><div id="tileCountsGrid" class="tile-counts"></div><p class="muted">Gold letters earn +3 points each.</p></details>
 </aside></div><footer>A word at a time. A little better every round. <span>PENTALINGO / PLAY WITH WORDS</span></footer>
 </main>
-<dialog id="helpDialog"><button class="dialog-close quiet" aria-label="Close instructions">✕</button><p class="eyebrow">THE QUICK START</p><h2>Find your word flow.</h2><ol class="rules"><li><strong>Pick your pace.</strong> Classic and Daily give you five minutes. Sprint gives you 90 seconds. Daily uses the same UTC-date tile sequence for everyone.</li><li><strong>Build across five lanes.</strong> Each starts with a consonant. Tap a lane or press 1–5 to append the queue letter. You can also drag the selected tile onto a lane.</li><li><strong>Keep or skip.</strong> Discard the queue with D. Tap the newest discard to use it instead; tap the queue to switch back. Only the top discard can be reused.</li><li><strong>Make it count.</strong> Submit an English word of 4–10 letters with its Bank button. Each word can score once per round. The lane restarts with the top discard, if any.</li><li><strong>Two wildcards, your choice.</strong> Choose A–Z, select Use blank, then tap a lane. Blanks don’t consume your queue and score no rare-letter bonus.</li><li><strong>Chase a combo.</strong> Bank consecutive words within 10 seconds for +1, +2, then +3 bonus points. A rejected word resets the chain.</li></ol><div class="scoring-note">1 point per word + 1 per letter beyond four + 3 per gold letter (J K Q V X Z) + combo bonus. Each remaining discard costs 1 point. Bank five words for a one-time +5 milestone bonus.</div><p>Rounds end when the clock expires or you choose Finish. An empty bag still lets you bank words, reuse discards, and spend blanks. Dictionary checks require an internet connection. Scores are stored locally; challenge links share a tile sequence, not a live leaderboard.</p><button class="primary dialog-close">Let’s play</button></dialog>
+<dialog id="mobileMenu" class="mobile-menu" aria-labelledby="mobileMenuTitle">
+  <div class="mobile-menu-heading"><h2 id="mobileMenuTitle">Game menu</h2><button class="quiet dialog-close" aria-label="Close game menu">✕</button></div>
+  <div class="mobile-tabs" role="tablist" aria-label="Game menu sections">
+    <button id="tab-round" data-mobile-tab="round" role="tab" aria-controls="pane-round" aria-selected="true">Round</button>
+    <button id="tab-friends" data-mobile-tab="friends" role="tab" aria-controls="pane-friends" aria-selected="false" tabindex="-1">Friends</button>
+    <button id="tab-scores" data-mobile-tab="scores" role="tab" aria-controls="pane-scores" aria-selected="false" tabindex="-1">Scores</button>
+    <button id="tab-settings" data-mobile-tab="settings" role="tab" aria-controls="pane-settings" aria-selected="false" tabindex="-1">Settings</button>
+  </div>
+  <section id="pane-round" class="mobile-pane" role="tabpanel" aria-labelledby="tab-round"><div id="mobileRoundMode"></div><div id="mobileRoundActions"></div><div id="mobileMilestone"></div><div id="mobileBag"></div><p class="muted">The round clock keeps running while the menu is open.</p></section>
+  <section id="pane-friends" class="mobile-pane" role="tabpanel" aria-labelledby="tab-friends" hidden><div id="mobileFriends"></div></section>
+  <section id="pane-scores" class="mobile-pane" role="tabpanel" aria-labelledby="tab-scores" hidden><div id="mobileScores"></div><div id="mobileWords"></div></section>
+  <section id="pane-settings" class="mobile-pane" role="tabpanel" aria-labelledby="tab-settings" hidden><div id="mobileSettings"></div></section>
+</dialog>
+<dialog id="helpDialog"><button class="dialog-close quiet" aria-label="Close instructions">✕</button><p class="eyebrow">THE QUICK START</p><h2>Find your word flow.</h2><ol class="rules"><li><strong>Pick your pace.</strong> Classic and Daily give you five minutes. Sprint gives you 90 seconds. Daily uses the same UTC-date tile sequence for everyone.</li><li><strong>Build across five lanes.</strong> Each starts with a consonant. The queue shows your next five tiles, but only the front tile can be played or discarded. Tap a lane or press 1–5 to append the queue letter. You can also drag the selected tile onto a lane.</li><li><strong>Keep or skip.</strong> Discard the queue with D. Tap the newest discard to use it instead; tap the queue to switch back. Only the top discard can be reused.</li><li><strong>Make it count.</strong> Submit an English word of 4–10 letters with its Bank button. Each word can score once per round. The lane restarts with the top discard, if any.</li><li><strong>Two wildcards, your choice.</strong> Choose A–Z, select Use blank, then tap a lane. Blanks don’t consume your queue and score no rare-letter bonus.</li><li><strong>Chase a combo.</strong> Bank consecutive words within 10 seconds for +1, +2, then +3 bonus points. A rejected word resets the chain.</li></ol><div class="scoring-note">1 point per word + 1 per letter beyond four + 3 per gold letter (J K Q V X Z) + combo bonus. Each remaining discard costs 1 point. Bank five words for a one-time +5 milestone bonus.</div><p>Rounds end when the clock expires or you choose Finish. An empty bag still lets you bank words, reuse discards, and spend blanks. Dictionary checks require an internet connection. Scores are stored locally; challenge links share a tile sequence, not a live leaderboard.</p><button class="primary dialog-close">Let’s play</button></dialog>
 <dialog id="resultDialog"><div class="result-medal" id="resultMedal" aria-hidden="true"><span>✦</span></div><p class="eyebrow">ROUND COMPLETE</p><h2 id="resultTitle">Nicely played.</h2><strong id="resultScore" class="result-score">0</strong><p id="resultDetail"></p><div class="result-highlights" id="resultHighlights"></div><div class="actions"><button id="copyResult" class="quiet">Copy result</button><button class="primary dialog-close">Back to board</button></div></dialog>
-<script src="assets/game-core.js"></script><script src="assets/audio.js"></script><script src="assets/effects.js"></script><script src="assets/word-game.js"></script>
+<script>
+  // Load in dependency order; async downloads must not start the game before its rules.
+  (async () => {
+    for (const path of ['assets/game-core.js', 'assets/audio.js', 'assets/effects.js', 'assets/word-game.js']) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = assetUrl(path);
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`Could not load ${path}`));
+        document.body.append(script);
+      });
+    }
+  })().catch(() => {
+    const message = document.getElementById('status');
+    message.textContent = 'The game could not finish loading. Check your connection and try again. ';
+    message.classList.add('error');
+    const retry = document.createElement('button');
+    retry.textContent = 'Try again';
+    retry.onclick = () => location.reload();
+    message.append(retry);
+  });
+</script>
 </body></html>
