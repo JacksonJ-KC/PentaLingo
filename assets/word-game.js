@@ -2,10 +2,32 @@
 const $=id=>document.getElementById(id), C=PentaCore, audio=new GameAudio(), fx=new GameEffects();
 let mode='classic',s=null,clock=null,epoch=0,selection='queue',challenge=null;
 let dragSession=null,suppressClickUntil=0;
+let placementTimer=null;
+const placementDelay=1000;
+let placementGesture=null;
+const handledPlacementEvents=new WeakSet();
+function selectedPlacementTile(){
+  if(selection==='wild')return s?.blanks?`${s.blanks}:${$('wildLetter').value}`:null;
+  return selection==='discard'?s?.discard[0]:s?.queue;
+}
+function capturePlacementGesture(kind){
+  return {kind,round:s,version:epoch,source:selection,tile:selectedPlacementTile(),used:false};
+}
+function placementPointerDown(event){
+  if(event.isPrimary===false||(event.button!==undefined&&event.button!==0))return;
+  suppressClickUntil=0;
+  placementGesture=capturePlacementGesture('pointer');
+}
+function placementKeyDown(event){
+  if(!['Enter',' '].includes(event.key)||!event.target.closest?.('.word-row'))return;
+  if(event.repeat){event.preventDefault();return;}
+  placementGesture=capturePlacementGesture('keyboard');
+}
 function beginTileDrag(event,source){
   const dragged=source==='queue'?s?.queue:s?.discard[0];
   if(!live()||!dragged){event.preventDefault();return;}
   selection=source;
+  placementGesture=capturePlacementGesture('pointer');
   dragSession={round:s,version:epoch,source,tile:dragged,used:false};
   if(event.dataTransfer){event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',dragged.letter);}
 }
@@ -17,12 +39,24 @@ function dropTile(event,index=null){
   if(current!==gesture.tile)return;
   // A drop owns one specific tile, never whichever tile happens to be next.
   gesture.used=true;dragSession=null;suppressClickUntil=Date.now()+350;
+  if(placementGesture)placementGesture.used=true;
   selection=gesture.source;
   if(index!==null)place(index);else if(gesture.source==='queue')discard();
 }
 function endTileDrag(){if(dragSession)suppressClickUntil=Date.now()+350;dragSession=null;}
 function clickLane(event,index){
-  if(dragSession||(event.detail>0&&Date.now()<suppressClickUntil))return;
+  if(handledPlacementEvents.has(event))return;
+  handledPlacementEvents.add(event);
+  if(dragSession||Date.now()<suppressClickUntil)return;
+  const pointerClick=event.detail>0||['mouse','touch','pen'].includes(event.pointerType)||event.sourceCapabilities?.firesTouchEvents;
+  // Compatibility clicks and duplicate callbacks belong to the same press. They
+  // must not consume the freshly advanced queue or a second wildcard/discard.
+  if(pointerClick||(event.detail===0&&placementGesture?.kind==='keyboard')){
+    placementGesture ||= capturePlacementGesture('pointer');
+    const gesture=placementGesture;
+    if(gesture.used||gesture.round!==s||gesture.version!==epoch||gesture.source!==selection||gesture.tile!==selectedPlacementTile())return;
+    gesture.used=true;
+  }
   place(index);
 }
 const safeRead=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
@@ -38,11 +72,14 @@ function seedCode(){return `${mode==='sprint'?'S':'C'}-${Math.random().toString(
 function startRound(){
   if(s?.active)return;
   audio.unlock();epoch++;clearInterval(clock);
+  clearTimeout(placementTimer);
   dragSession=null;suppressClickUntil=0;
+  placementGesture=null;
   fx.stage();
   const code=challenge||(mode==='daily'?`D-${new Date().toISOString().slice(0,10)}`:seedCode());
   const bag=C.deck(code),rows=Array.from({length:5},()=>{const index=bag.findIndex(l=>!'AEIOU'.includes(l));return [tile(bag.splice(index,1)[0])];});
   s={active:true,code,mode,bag,rows,discard:[],queue:tile(bag.shift()),blanks:2,score:0,words:[],chain:1,lastBank:null,deadline:Date.now()+C.duration(mode)*1000,pending:new Set(),milestone:false};
+  s.nextPlacementAt=0;
   const previous=records.filter(r=>r.mode===mode);
   s.previousBest=previous.length?Math.max(...previous.map(r=>r.score)):null;s.bestCelebrated=false;s.bestChain=1;
   $('rewardTitle').textContent='FIND YOUR FLOW';$('rewardDetail').textContent='Bank words. Build a streak.';$('rewardCard').dataset.tier='1';
@@ -53,6 +90,7 @@ function tick(){if(!s?.active)return;if(seconds()<=0){endRound();return;}renderC
 function renderClock(){const left=seconds();$('timeLeft').textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;$('timeBar').style.width=`${left/C.duration(mode)*100}%`;$('timeBar').parentElement.classList.toggle('urgent',left<=30);$('comboFuse').style.width=`${s?.active&&s.lastBank!==null?Math.max(0,1-(Date.now()-s.lastBank)/C.comboWindow)*100:0}%`;}
 function place(index){
   if(!live()||s.pending.has(index))return;
+  if(Date.now()<s.nextPlacementAt)return;
   if(s.rows[index].length>=10){status('That lane is full. Bank its word or choose another lane.',true);return;}
   let next;
   if(selection==='wild'){if(!s.blanks)return;next=tile($('wildLetter').value,true);s.blanks--;}
@@ -60,7 +98,12 @@ function place(index){
   else {next=s.queue;if(next)s.queue=s.bag.length?tile(s.bag.shift()):null;}
   if(!next){status('No tile selected. Try a discard or a wildcard.',true);return;}
   const drewQueue=selection==='queue';
-  s.rows[index].push(next);selection='queue';audio.effect('place');render();status('Keep building, or bank a word with at least four letters.');
+  // Enforce the lock at the mutation boundary, shared by every input method.
+  s.nextPlacementAt=Date.now()+placementDelay;
+  const round=s;
+  clearTimeout(placementTimer);
+  placementTimer=setTimeout(()=>{if(s===round&&s.active){render();if($('status').textContent==='Tile placed. Next placement ready in one second.')status('Ready. Place the next tile in any lane.');}},placementDelay);
+  s.rows[index].push(next);selection='queue';audio.effect('place');render();status('Tile placed. Next placement ready in one second.');
   fx.place(index,s.rows[index].length,next.blank);if(drewQueue&&s.queue)fx.drawTile(C.bonus.includes(s.queue.letter));
 }
 function discard(){if(!live()||!s.queue)return;s.discard.unshift(s.queue);s.queue=s.bag.length?tile(s.bag.shift()):null;selection='queue';audio.effect('discard');render();status('Queue discarded. The newest discard is available to reuse.');if(s.queue)fx.drawTile(C.bonus.includes(s.queue.letter));}
@@ -91,6 +134,7 @@ async function bank(index){
 }
 function endRound(){
   if(!s?.active)return;s.active=false;epoch++;clearInterval(clock);const penalty=s.discard.length;s.score-=penalty;selection='queue';
+  clearTimeout(placementTimer);
   records.push({score:s.score,mode:s.mode,code:s.code,words:s.words.length,date:new Date().toISOString()});records=records.sort((a,b)=>b.score-a.score).slice(0,30);safeWrite('pentalingo-rounds-v2',records);
   const best=s.previousBest!==null&&s.score>s.previousBest;
   audio.effect(best?'milestone':'end');render();$('resultTitle').textContent=best?'A new personal best!':s.words.length?'Words well played.':'Every round is a fresh start.';$('resultScore').textContent=s.score;$('resultDetail').textContent=`${s.words.length} words banked · ${penalty} discard penalty · ${s.code}`;
@@ -136,6 +180,8 @@ function render(){
     }
     const row=lane.children[1],submit=lane.children[2];
     row.disabled=!active||s.pending.has(i);
+    row.setAttribute('aria-disabled',String(row.disabled||Date.now()<s.nextPlacementAt));
+    lane.classList.toggle('placement-locked',active&&Date.now()<s.nextPlacementAt);
     row.setAttribute('aria-label',`Place selected letter in lane ${i+1}: ${s?.rows[i].map(t=>t.letter).join('')||'empty'}`);
     for(let j=0;j<10;j++){
       const t=s?.rows[i][j],cell=row.children[j];
@@ -159,7 +205,13 @@ function link(){const url=new URL(location.href);url.searchParams.set('challenge
 function loadCode(raw){if(s?.active){status('Finish this round before loading a challenge.',true);return;}const code=raw.trim().toUpperCase();if(!/^(?:[CS]-[A-Z0-9]{1,20}|D-\d{4}-\d{2}-\d{2})$/.test(code)){status('Use a round code such as C-ABC123, S-ABC123 or D-2026-11-11.',true);return;}challenge=code;mode=code.startsWith('S-')?'sprint':code.startsWith('D-')?'daily':'classic';render();status('Challenge loaded. Start the round when you’re ready.');}
 $('playButton').onclick=startRound;$('finishButton').onclick=()=>{if($('mobileMenu').open)$('mobileMenu').close();endRound();};$('discardButton').onclick=discard;$('queueTile').onclick=()=>{if(dragSession)return;selection='queue';render();};$('queueTile').ondragstart=e=>beginTileDrag(e,'queue');$('discardPile').ondragover=e=>{if(dragSession&&!dragSession.used&&dragSession.source==='queue')e.preventDefault();};$('discardPile').ondrop=e=>dropTile(e);
 document.addEventListener('dragend',endTileDrag);
-document.addEventListener('pointerdown',()=>{suppressClickUntil=0;},true);
+document.addEventListener('pointerdown',placementPointerDown,true);
+document.addEventListener('keydown',placementKeyDown,true);
+document.addEventListener('keyup',event=>{
+  if(!['Enter',' '].includes(event.key))return;
+  const gesture=placementGesture;
+  if(gesture?.kind==='keyboard')setTimeout(()=>{if(placementGesture===gesture)placementGesture=null;},0);
+},true);
 $('wildButton').onclick=()=>{if(live()&&s.blanks){selection='wild';render();status('Wildcard selected. Choose a letter, then tap a lane.');}};
 $('helpButton').onclick=()=>$('helpDialog').showModal();document.querySelectorAll('.dialog-close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 $('loadButton').onclick=()=>loadCode($('challengeCode').value);$('shareButton').onclick=()=>s&&copy(link());$('copyResult').onclick=()=>s&&copy(`PentaLingo · ${s.score} points · ${s.words.length} words\nBeat my ${s.mode} round: ${link()}`);

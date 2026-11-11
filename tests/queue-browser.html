@@ -19,13 +19,15 @@ app.onload=async()=>{
  row(0).dispatchEvent(new win.MouseEvent('click',{bubbles:true,detail:1}));
  check('One drag followed by duplicate drop and click places exactly one tile',win.eval('s.rows[0].length===2&&s.rows[1].length===1&&s.rows[0][1].letter')===expected[0]);
  check('Front advances by just one position',doc.getElementById('queueTile').textContent===expected[1]);
- row(1).dispatchEvent(new win.PointerEvent('pointerdown',{bubbles:true}));row(1).dispatchEvent(new win.MouseEvent('click',{bubbles:true,detail:1}));
- check('A fresh click immediately after a drag still works',win.eval('s.rows[1].length===2&&s.rows[1][1].letter')===expected[1]);
+ await new Promise(resolve=>setTimeout(resolve,1050));
+ row(1).dispatchEvent(new win.PointerEvent('pointerdown',{bubbles:true,isPrimary:true,button:0,pointerId:1}));row(1).dispatchEvent(new win.MouseEvent('click',{bubbles:true,detail:1}));
+ check('A fresh click works after the one-second lock',win.eval('s.rows[1].length===2&&s.rows[1][1].letter')===expected[1]);
  const before=win.eval('s.rows[2].length');drag(row(2),'drop',new win.DataTransfer());
  check('Unrelated external drops cannot place a queue tile',win.eval('s.rows[2].length')===before);
  transfer=new win.DataTransfer();drag(doc.getElementById('queueTile'),'dragstart',transfer);
  drag(doc.getElementById('discardPile'),'drop',transfer);drag(doc.getElementById('discardPile'),'drop',transfer);
  check('Dragging into discard consumes one tile only',win.eval('s.discard.length===1&&s.discard[0].letter')===expected[2]);
+ await new Promise(resolve=>setTimeout(resolve,1050));
  transfer=new win.DataTransfer();drag(doc.querySelector('#discardPile button'),'dragstart',transfer);
  drag(row(2),'drop',transfer);drag(row(3),'drop',transfer);
  check('Discard dragging reuses only the captured tile',win.eval('s.discard.length===0&&s.rows[2].length===2&&s.rows[3].length===1'));

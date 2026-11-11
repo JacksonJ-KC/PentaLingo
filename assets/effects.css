@@ -109,3 +109,6 @@ html[data-effects='calm'] *, html[data-effects='calm'] *::before, html[data-effe
   .queue-help { font-size: 10px; }
   .arena.is-playing .round-prompt p { font-size: 10px; }
 }
+
+/* Keep lane focus while visibly holding the one-second placement lock. */
+.lane.placement-locked .word-row { opacity: .6; cursor: wait; }

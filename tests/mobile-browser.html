@@ -25,7 +25,7 @@ app.onload=async()=>{
  app.style.width='320px';app.style.height='568px';await wait();
  const row=doc.querySelector('.word-row');row.focus();row.click();
  check('Moves preserve lane focus',doc.activeElement===row);
- for(let i=0;i<8;i++)row.click();
+ win.eval("s.rows[0]=Array.from({length:9},()=>tile('A'));s.nextPlacementAt=0;render()");row.click();
  check('Ten-letter words stay in their lane',row.lastElementChild.getBoundingClientRect().right<=row.getBoundingClientRect().right+1);
  const score=win.eval('s.rows[0].length');
  doc.getElementById('mobileMenuButton').click();

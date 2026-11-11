@@ -23,7 +23,7 @@ The Daily challenge changes at midnight UTC, which may be a different time where
 ## How to play
 
 1. **Press Start round.** Your five lanes each begin with a letter. Your next five tiles appear in the queue above them. Only the front tile can be played or discarded; the other four help you plan ahead. Each time you use the front tile, the queue moves forward.
-2. **Build a word.** Tap or click a lane to add the queue letter to its end. On a computer, you can also drag the letter onto a lane. Words must be **4–10 letters long**.
+2. **Build a word.** Tap or click a lane to add the queue letter to its end. On a computer, you can also drag the letter onto a lane. Words must be **4–10 letters long**. After placing a tile, wait one second before placing another tile in any lane.
 3. **Skip a letter if you need to.** Press **Discard queue** to set it aside and get the next letter. To reuse a discard, tap the newest letter in the discard stack, then tap a lane. Only the newest discard is available. Tap the queue letter to switch back.
 4. **Bank your word.** When a lane spells an English word, press its **Bank** button to collect your points. You can score each word only once per round. The lane clears so you can build another word, starting with the newest discard if there is one.
 5. **Use a wildcard when you’re stuck.** You have **two blanks per round**. Choose a letter, press **Use blank**, then tap a lane. Your queue letter stays available for your next move.
