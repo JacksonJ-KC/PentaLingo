@@ -1,135 +1,29 @@
-<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PentaLingo</title>
-  <link rel="stylesheet" href="assets/style.css">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101b24"><title>PentaLingo · Make every letter count</title><link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/effects.css"></head>
 <body>
-  <header class="d-flex header justify-content-between align-items-center p-3 bg-primary text-white">
-    <button id="instructionsButton" class="btn btn-info ms-3" data-bs-toggle="modal" data-bs-target="#instructionsModal">Instructions</button>
-    <h1 class="game-title">PentaLingo</h1>
-    <div class="d-flex header-right align-items-center">
-      <div id="timer" class="me-3">Time Left: <span id="timeLeft">300</span> seconds</div>
-      <button id="playButton" class="btn btn-success">Play</button>
-    </div>
-  </header>
-
-  <main class="d-flex">
-
-    <!-- Left Sidebar -->
-    <nav class="bg-light border-end d-flex flex-column justify-content-between">
-      <div class="p-3">
-        <h4>Submitted Words</h4>
-        <ul id="submittedWordsList" class="list-group">
-          <!-- Words will be appended here dynamically -->
-        </ul>
-      </div>
-      <div class="p-3 border-top">
-        <h5 class="mb-0">Total Score: <span id="score">0</span></h5>
-      </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="flex-grow-1 p-4">
-      <div class="pool mb-3" id="letterPool"></div>
-      <div class="container rack-container">
-        <div class="rack-section text-center">
-          <h3 class="rack-label">Queue</h3>
-          <div id="letterRack" class="rack border p-1"></div>
-        </div>
-      </div>
-      <div class="container mt-4" id="gameBoard"></div>
-      <div class="container discard-container">
-        <div class="discard-section text-center">
-          <h3 class="discard-label">Discard Stack</h3>
-          <div id="discardPile" class="discard-pile border p-1"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right Sidebar -->
-    <nav class="bg-light border-end d-flex flex-column justify-content-between">
-      <div class="p-3">
-        <h4>Tiles Remaining</h4>
-        <div id="tileCountsGrid" class="grid-container"></div>
-      </div>
-    </nav>
-
-  </main>
-
-  <!-- Instructions Modal -->
-  <div class="modal fade" id="instructionsModal" tabindex="-1" aria-labelledby="instructionsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="instructionsModalLabel">PentaLingo Instructions</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>In this fast-paced, brain-teasing game, your mission is to craft five words while racing against time. But beware—this isn’t just any word game. Random letter tiles constantly force you to rethink your strategy, while time keeps you in the hot seat.</p>
-          <h2>🕹️ How to Play</h2>
-          <ol>
-            <li><strong>Start a Game:</strong>
-              <ul>
-                <li>Press <strong>Play</strong> to start a new random game.</li>
-                <li>A letter tile will appear in your queue.</li>
-              </ul>
-            </li>
-            <li><strong>Place or Discard:</strong>
-              <ul>
-                <li>Place the tile as the next letter in one of your words, <strong>or</strong> discard it to the discard stack.</li>
-                <li>You can reuse the most recently discarded tile <strong>at any time</strong>.</li>
-              </ul>
-            </li>
-            <li><strong>Building Your Words:</strong>
-              <ul>
-                <li>Words must be at least <strong>4 letters long</strong>.</li>
-                <li>Once a word is completed and you start a new one, the new word must begin with the <strong>top letter in the discard stack</strong> (if available).</li>
-              </ul>
-            </li>
-            <li><strong>Wildcard Tiles:</strong>
-              <ul>
-                <li>Use your <strong>two blank tiles</strong> as wildcards to complete your words.</li>
-                <li>Wildcards can be used at any time.</li>
-              </ul>
-            </li>
-          </ol>
-          <h2>🏆 Scoring </h2>
-          <ul>
-            <li><strong>Basic Points:</strong>
-              <ul>
-                <li>Each completed word: <strong>1 point</strong>.</li>
-                <li>Each letter beyond 4 in a word: <strong>+1 point per letter</strong>.</li>
-              </ul>
-            </li>
-            <li><strong>Bonus Points:</strong>
-              <ul>
-                <li>Bonus letters (<strong>J, K, Q, V, X, Z</strong>): <strong>+3 points per letter</strong>.</li>
-              </ul>
-            </li>
-            <li><strong>Penalties:</strong>
-              <ul>
-                <li>Each unused letter in the discard stack: <strong>-1 point per letter</strong>.</li>
-              </ul>
-            </li>
-          </ul>
-          <h2>🤝 Battle Against Friends</h2>
-          <p>Challenge your friends by sharing your <strong>Game ID</strong>! They’ll play the same letter sequence as you—compare scores to see who’s the true PentaLingo master.</p>
-
-          <p>Are you ready to flex your vocabulary and conquer the clock? Press <strong>Play</strong> and feed your PentaLingo cravings!</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bootstrap JS CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/word-game.js"></script>
-</body>
-</html>
+<header class="header"><a class="brand" href="./"><span class="logo">P<span>5</span></span>PentaLingo<span class="tag">WORD ARCADE</span></a><div class="header-actions"><button id="helpButton" class="quiet">How to play</button><button id="soundButton" class="quiet" aria-pressed="false">Sound off</button><button id="musicButton" class="quiet" aria-pressed="false">Music off</button><button id="effectsButton" class="quiet" aria-pressed="true">Effects full</button></div></header>
+<main>
+<section class="intro"><div><p class="eyebrow">A LITTLE STRATEGY. A LOT OF WORDPLAY.</p><h1>Make every letter <em>count.</em></h1><p>Five lanes. One clock. How far can your vocabulary take you?</p></div><div class="daily-stamp"><span>YOUR NEXT PERSONAL BEST</span><strong>Starts with one letter.</strong></div></section>
+<div class="layout">
+<section id="arena" class="arena panel" aria-label="Game arena">
+<div class="arena-top"><div class="modes" role="group" aria-label="Game mode"><button data-mode="classic" class="active" aria-pressed="true">Classic <small>5 min</small></button><button data-mode="daily" aria-pressed="false">Daily <small>Same tiles for all</small></button><button data-mode="sprint" aria-pressed="false">Sprint <small>90 sec</small></button></div><span id="modeLabel" class="badge">CLASSIC ROUND</span></div>
+<div class="round-dashboard"><div class="stats"><div><span>SCORE</span><strong id="score">0</strong></div><div><span>TIME LEFT</span><strong id="timeLeft">5:00</strong></div><div><span>COMBO</span><strong id="combo">×1</strong></div><div><span>WORDS</span><strong id="wordCount">0</strong></div></div>
+<div class="time-track"><div id="timeBar"></div></div>
+<div class="play-strip"><div class="draw-area"><span class="eyebrow">NEXT LETTER</span><button id="queueTile" class="tile queue" aria-label="Queue empty" disabled>?</button><span id="tilesLeft" class="muted">80 tiles in the bag</span></div><div class="round-prompt"><h2 id="roundTitle">Your next great word awaits.</h2><p id="roundHint">Start a round, then tap a lane to place your letter.</p><div class="actions"><button id="playButton" class="primary">Start round <span>↗</span></button><button id="finishButton" class="quiet" disabled>Finish round</button></div></div></div>
+<div class="reward-card" id="rewardCard" data-tier="1"><span class="reward-emblem" aria-hidden="true">✦</span><div><strong id="rewardTitle">FIND YOUR FLOW</strong><span id="rewardDetail">Bank words. Build a streak.</span></div><div class="combo-fuse" aria-hidden="true"><div id="comboFuse"></div></div></div></div><div class="milestone-track" aria-label="Five-word milestone"><span id="milestoneLabel">NEXT MILESTONE</span><div id="milestoneGems" aria-hidden="true"><i>✦</i><i>✦</i><i>✦</i><i>✦</i><i>✦</i></div><strong id="milestoneProgress">0 / 5 · +5 bonus</strong></div><div id="gameBoard" class="board" aria-label="Five word lanes"></div>
+<div class="tool-row"><button id="discardButton" class="quiet" disabled>↓ Discard queue</button><div class="wild-tool"><label for="wildLetter">Wildcard</label><select id="wildLetter" aria-label="Wildcard letter"></select><button id="wildButton" class="quiet" disabled>Use blank · 2 left</button></div></div>
+<div class="discard-heading"><span class="eyebrow">SECOND CHANCES</span><span class="muted">Tap the newest discard to select it · −1 each at the end</span></div><div id="discardPile" class="discard-pile" aria-label="Discard stack"></div>
+<p id="status" class="status" role="status" aria-live="polite">Ready when you are. Build words with 4–10 letters.</p>
+</section>
+<aside>
+<section class="panel challenge"><p class="eyebrow">BETTER TOGETHER</p><h2>A friendly rivalry.</h2><p>Same tiles. Same time. Send a challenge and compare your final scores.</p><div class="challenge-input"><label for="challengeCode">Round code</label><input id="challengeCode" maxlength="40" placeholder="Enter a friend's code" autocomplete="off" autocapitalize="characters" enterkeyhint="go" spellcheck="false"><button id="loadButton" class="quiet">Load challenge</button></div><button id="shareButton" class="primary">Copy challenge link ↗</button><p id="roundCode" class="muted">Start a round to get your code.</p></section>
+<section class="panel"><div class="section-title"><h2>Your best rounds</h2><span class="badge">ON THIS DEVICE</span></div><ol id="leaderboard" class="leaderboard"></ol></section>
+<section class="panel"><div class="section-title"><h2>Word collection</h2><span id="bestWord" class="muted">Go for a long one</span></div><ul id="submittedWordsList" class="word-list"><li class="empty-state">Your word wins will appear here.</li></ul></section>
+<details class="panel"><summary>What’s left in the bag?</summary><div id="tileCountsGrid" class="tile-counts"></div><p class="muted">Gold letters earn +3 points each.</p></details>
+</aside></div><footer>A word at a time. A little better every round. <span>PENTALINGO / PLAY WITH WORDS</span></footer>
+</main>
+<dialog id="helpDialog"><button class="dialog-close quiet" aria-label="Close instructions">✕</button><p class="eyebrow">THE QUICK START</p><h2>Find your word flow.</h2><ol class="rules"><li><strong>Pick your pace.</strong> Classic and Daily give you five minutes. Sprint gives you 90 seconds. Daily uses the same UTC-date tile sequence for everyone.</li><li><strong>Build across five lanes.</strong> Each starts with a consonant. Tap a lane or press 1–5 to append the queue letter. You can also drag the selected tile onto a lane.</li><li><strong>Keep or skip.</strong> Discard the queue with D. Tap the newest discard to use it instead; tap the queue to switch back. Only the top discard can be reused.</li><li><strong>Make it count.</strong> Submit an English word of 4–10 letters with its Bank button. Each word can score once per round. The lane restarts with the top discard, if any.</li><li><strong>Two wildcards, your choice.</strong> Choose A–Z, select Use blank, then tap a lane. Blanks don’t consume your queue and score no rare-letter bonus.</li><li><strong>Chase a combo.</strong> Bank consecutive words within 10 seconds for +1, +2, then +3 bonus points. A rejected word resets the chain.</li></ol><div class="scoring-note">1 point per word + 1 per letter beyond four + 3 per gold letter (J K Q V X Z) + combo bonus. Each remaining discard costs 1 point. Bank five words for a one-time +5 milestone bonus.</div><p>Rounds end when the clock expires or you choose Finish. An empty bag still lets you bank words, reuse discards, and spend blanks. Dictionary checks require an internet connection. Scores are stored locally; challenge links share a tile sequence, not a live leaderboard.</p><button class="primary dialog-close">Let’s play</button></dialog>
+<dialog id="resultDialog"><div class="result-medal" id="resultMedal" aria-hidden="true"><span>✦</span></div><p class="eyebrow">ROUND COMPLETE</p><h2 id="resultTitle">Nicely played.</h2><strong id="resultScore" class="result-score">0</strong><p id="resultDetail"></p><div class="result-highlights" id="resultHighlights"></div><div class="actions"><button id="copyResult" class="quiet">Copy result</button><button class="primary dialog-close">Back to board</button></div></dialog>
+<script src="assets/game-core.js"></script><script src="assets/audio.js"></script><script src="assets/effects.js"></script><script src="assets/word-game.js"></script>
+</body></html>

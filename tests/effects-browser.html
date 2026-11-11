@@ -1,0 +1,43 @@
+﻿<!doctype html><meta charset="utf-8"><title>Visual feedback checks</title>
+<style>body{margin:0;background:#101b24;color:white;font:12px monospace}iframe{border:0;display:block}pre{white-space:pre-wrap}</style>
+<iframe id="app" src="../index.html" style="width:390px;height:844px"></iframe><pre id="results">Loading…</pre>
+<script>
+app.onload=async()=>{
+ const win=app.contentWindow,doc=app.contentDocument,results=[];
+ const check=(name,pass)=>results.push({name,pass});
+ try{
+ win.eval('fx.setFull(true)');
+ check('Effects layer never intercepts taps',win.getComputedStyle(doc.querySelector('.fx-layer')).pointerEvents==='none');
+ win.fetch=async url=>({ok:true,json:async()=>[{word:new URL(url).searchParams.get('sp')}]});
+ win.eval("records=[{mode:'classic',score:10}];loadCode('C-VISUAL');startRound()");
+ const originalBag=win.eval('JSON.stringify(s.bag)');
+ win.eval("fx.drawTile(true)");
+ check('Rare reveal does not change the draw or its odds',win.eval('JSON.stringify(s.bag)')===originalBag);
+ for(const word of ['CATS','PLANETS','QUIZ','BARK','GLOW']){
+ win.eval(`s.rows[0]=[...'${word}'].map(l=>tile(l));render()`);
+ await win.eval('bank(0)');
+ }
+ check('Animated banks preserve exact score and milestone rules',win.eval('s.score===31&&s.words.length===5&&s.milestone&&s.chain===4'));
+ check('Milestone fills five gems',doc.querySelectorAll('#milestoneGems .earned').length===5);
+ check('Milestone gets a gold celebration',doc.getElementById('rewardCard').dataset.tier==='3');
+ check('Score trails are created for banked tiles',doc.querySelectorAll('.fx-token').length>0);
+ check('Particles are bounded during rapid scoring',win.eval('fx.particles.length<=120'));
+ win.eval('fx.setFull(false)');
+ check('Calm mode cancels motion and particles',win.eval('fx.particles.length===0&&fx.animations.size===0&&fx.frame===0'));
+ check('Calm mode clears temporary score trails',doc.querySelectorAll('.fx-token,.fx-label').length===0);
+ win.eval("s.rows[0]=[...'BATS'].map(l=>tile(l));render()");await win.eval('bank(0)');
+ check('Calm mode still banks words',win.eval('s.words.length===6&&s.score===35'));
+ win.eval('fx.setFull(true);endRound()');
+ check('Final result recognizes actual personal best',doc.getElementById('resultDialog').dataset.best==='true');
+ check('Final result shows score, longest word and combo',doc.getElementById('resultScore').textContent==='35'&&doc.getElementById('resultHighlights').textContent.includes('PLANETS')&&doc.getElementById('resultHighlights').textContent.includes('×4'));
+ check('Final effects render inside modal top layer',doc.getElementById('resultDialog').contains(doc.querySelector('.fx-layer')));
+ // Advance the particle clock explicitly: headless virtual timers and compositor
+ // animations do not share a clock. Finish real WAAPI handles before checking cleanup.
+ await win.eval('(async()=>{cancelAnimationFrame(fx.frame);fx.draw(performance.now()+2000);const active=[...fx.animations];active.forEach(a=>a.finish());await Promise.all(active.map(a=>a.finished));})()');
+ check('Expired effects leave no idle animation loop',win.eval('fx.frame===0&&fx.animations.size===0&&fx.particles.length===0'));
+ win.eval('fx.clear()');
+ check('Effect loop stops completely when cleared',win.eval('fx.frame===0&&fx.animations.size===0&&fx.particles.length===0'));
+ }catch(e){results.push({name:e.stack,pass:false});}
+ document.getElementById('results').textContent=JSON.stringify(results,null,2);
+};
+</script>

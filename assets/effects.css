@@ -1,0 +1,83 @@
+﻿/* The arcade finish: tactile tiles, jewel accents and a readable reward hierarchy. */
+:root { --violet: #bca2ff; --glow: #83efcb; }
+body { background: radial-gradient(ellipse at 5% 0, #2c3f49 0, transparent 38%), radial-gradient(ellipse at 95% 25%, #24273f 0, transparent 45%), #101b24; }
+.arena { background: linear-gradient(155deg, #202f3b, #17232f 65%); box-shadow: 0 16px 55px #0003, inset 0 1px 0 #ffffff0b; }
+.round-dashboard { background: #1b2935; border-radius: 12px 12px 0 0; }
+.tile:not(.empty) { background: linear-gradient(150deg, #f1f7e7, #cfdfce); box-shadow: inset 0 1px 0 #fff9, 0 3px 0 #0b171b55; text-shadow: 0 1px #fff6; }
+.tile.bonus { background: linear-gradient(140deg, #fff2b7, #f6c360 65%, #e4a946); border-bottom-color: #ac783b; box-shadow: inset 0 1px 0 #fff9, 0 0 16px #f6c36020, 0 3px 0 #0b171b55; }
+.tile.blank { background: linear-gradient(140deg, #e9deff, #bca2ef); border-bottom-color: #8773b1; }
+.tile.queue { position: relative; isolation: isolate; overflow: hidden; }
+.tile.queue.bonus::after { content: ''; position: absolute; inset: -60%; background: linear-gradient(110deg, transparent 35%, #fff9 49%, transparent 63%); transform: translateX(-70%); animation: gold-reveal 850ms ease-out both; pointer-events: none; }
+.primary { background: linear-gradient(145deg, #dbffa2, #b8ec70); border-color: #d4ff9b; box-shadow: inset 0 1px 0 #ffffff70, 0 3px 0 #69944455; }
+.lane { transition: border-color .25s, background .25s; box-shadow: inset 0 1px 8px #0002; }
+.lane.ready { border-color: #78ac735e; }
+.lane.ready .bank { background: linear-gradient(135deg, #40684e, #29483e); color: #d9ffa7; border-color: #7bab6880; }
+.lane.checking .bank { color: var(--gold); background: linear-gradient(90deg, #25343f 25%, #4a4a43 50%, #25343f 75%); background-size: 200% 100%; animation: dictionary-sheen 1.2s ease-in-out infinite; }
+.stats strong { display: inline-block; font-variant-numeric: tabular-nums; }
+#combo { color: #cbb1ff; }
+.reward-card { display: flex; align-items: center; position: relative; gap: 12px; margin-bottom: 14px; padding: 13px 15px 16px; border: 1px solid #83efcb3b; border-radius: 12px; background: linear-gradient(115deg, #25443e, #25343e 75%); overflow: hidden; }
+.reward-card > div:not(.combo-fuse) { min-width: 0; }
+.reward-card strong { display: block; color: #d4ffac; font: 700 15px 'Space Grotesk', sans-serif; letter-spacing: .8px; }
+.reward-card span:not(.reward-emblem) { display: block; margin-top: 4px; font-size: 11px; color: #b5d0c7; overflow-wrap: anywhere; }
+.reward-emblem { display: grid; place-items: center; flex: 0 0 37px; height: 37px; background: linear-gradient(140deg, #d0f8a0, #64bba1); color: #23483d; font-size: 27px; border-radius: 11px; box-shadow: inset 0 1px 1px #fff8, 0 3px 0 #122c2d; transform: rotate(-8deg); }
+.reward-card[data-tier='2'] { border-color: #bca2ff77; background: linear-gradient(115deg, #493b61, #29313f); }
+.reward-card[data-tier='2'] strong { color: #e3d2ff; }
+.reward-card[data-tier='2'] .reward-emblem { background: linear-gradient(140deg, #eaddff, #ad8ae9); color: #604882; }
+.reward-card[data-tier='3'] { border-color: #f3cc7477; background: linear-gradient(115deg, #594932, #2b343b); }
+.reward-card[data-tier='3'] strong { color: #ffe39c; }
+.reward-card[data-tier='3'] .reward-emblem { background: linear-gradient(140deg, #fff3c2, #e9b755); color: #775827; }
+.combo-fuse { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: #0002; }
+#comboFuse { height: 100%; width: 0; background: linear-gradient(90deg, #8ae7cb, #d4ff98); transition: width 1s linear; }
+.milestone-track { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 3px 2px 16px; }
+.milestone-track > span { font-size: 8px; letter-spacing: 1px; color: var(--muted); }
+.milestone-track strong { margin-left: auto; font-size: 10px; color: #cedcc9; }
+#milestoneGems { display: flex; gap: 5px; }
+#milestoneGems i { display: grid; place-items: center; width: 21px; height: 21px; color: #70818d; background: #263846; border: 1px solid #48606e; border-radius: 6px; font-style: normal; transition: background .25s, color .25s; }
+#milestoneGems i.earned { color: #5f4c24; background: linear-gradient(140deg, #fff0b6, #e4b455); border-color: #f5d78a; box-shadow: 0 0 10px #ffdc6e22; }
+.fx-layer { position: fixed; inset: 0; z-index: 40; overflow: hidden; pointer-events: none; contain: strict; }
+.fx-layer.in-dialog { position: absolute; border-radius: inherit; z-index: 5; }
+.fx-layer canvas { display: block; width: 100%; height: 100%; }
+.fx-label { position: absolute; width: max-content; max-width: 180px; text-align: center; padding: 7px 12px; border-radius: 9px; border: 1px solid #d5ffb188; background: #203c32ed; color: #e7ffcb; font: 700 16px 'Space Grotesk', sans-serif; box-shadow: 0 5px 20px #0005; }
+.fx-label.gold { border-color: #ffe49caa; background: #4b3b25f2; color: #fff0b6; }
+.fx-token { position: absolute; display: grid; place-items: center; width: 28px; height: 34px; border-radius: 6px; background: #d9efca; color: #234336; font: 700 20px 'Space Grotesk', sans-serif; box-shadow: 0 0 14px #bdf19077; pointer-events: none; }
+.fx-token.gold { background: #ffdc87; box-shadow: 0 0 16px #f6c36077; }
+.fx-token.blank { background: #d5bfff; }
+#resultDialog { text-align: center; isolation: isolate; background: radial-gradient(ellipse at 50% 0, #3c4a46, transparent 70%), #192630; }
+#resultDialog[data-best='true'] { border-color: #e5c581; background: radial-gradient(ellipse at 50% 0, #635130, transparent 65%), #192630; }
+#resultDialog .actions { justify-content: center; }
+.result-medal { width: 94px; height: 94px; margin: 10px auto 25px; position: relative; display: grid; place-items: center; border-radius: 28px; background: linear-gradient(145deg, #fff3c2, #e6b751 65%, #a86d30); border: 2px solid #fff0b6; box-shadow: 0 6px 0 #916c35, 0 0 45px #f5d66a33, inset 0 2px 2px #fff9; }
+.result-medal span { font-size: 63px; color: #79582b; text-shadow: 0 1px #fff7; }
+.result-medal::before { content: ''; position: absolute; inset: -22px; z-index: -1; border: 1px solid #e8c77733; border-radius: 50%; }
+.result-medal::after { content: '✦'; position: absolute; right: -15px; top: -16px; color: #fff3bd; font-size: 27px; }
+.result-score { display: block; text-shadow: 0 0 35px #c4f17b25; line-height: 1.1; }
+.result-highlights { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 18px 0 26px; }
+.result-highlights > div { min-width: 0; padding: 12px 6px; background: #0c1b2377; border: 1px solid #ffffff12; border-radius: 10px; }
+.result-highlights span { display: block; font-size: 8px; letter-spacing: 1px; color: var(--muted); }
+.result-highlights strong { display: block; margin-top: 8px; color: #e8eac7; font-size: 13px; overflow-wrap: anywhere; }
+@keyframes gold-reveal { to { transform: translateX(70%); } }
+@keyframes dictionary-sheen { to { background-position: -200% 0; } }
+@media (max-width: 850px) {
+  .reward-card { margin-bottom: 10px; padding-top: 10px; padding-bottom: 12px; }
+}
+@media (max-width: 540px) {
+  .header-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+  .header-actions button { padding: 8px 4px; font-size: 11px; }
+  .reward-card strong { font-size: 12px; letter-spacing: .5px; }
+  .reward-card span:not(.reward-emblem) { font-size: 10px; }
+  .reward-emblem { flex-basis: 30px; height: 30px; font-size: 22px; border-radius: 9px; }
+  .reward-card { gap: 10px; }
+  .milestone-track { gap: 7px; }
+  .milestone-track > span { font-size: 7px; }
+  #milestoneGems { gap: 3px; }
+  #milestoneGems i { width: 17px; height: 19px; font-size: 12px; }
+  .milestone-track strong { font-size: 9px; }
+  .fx-label { font-size: 13px; }
+  .result-highlights strong { font-size: 11px; }
+}
+html[data-effects='calm'] *, html[data-effects='calm'] *::before, html[data-effects='calm'] *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+/* Keep edge tiles inside their lane even at the peak of the landing bounce. */
+.word-row .tile:first-child { transform-origin: left bottom; }
+.word-row .tile:last-child { transform-origin: right bottom; }

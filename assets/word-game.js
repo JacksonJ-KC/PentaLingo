@@ -1,672 +1,141 @@
-const letterPool = document.getElementById("letterPool");
-const letterRack = document.getElementById("letterRack");
-const discardPile = document.getElementById("discardPile");
-const gameBoard = document.getElementById("gameBoard");
-const playButton = document.getElementById("playButton");
-const scoreDisplay = document.getElementById("score");
-const timeLeftDisplay = document.getElementById("timeLeft");
-const submittedWordsList = document.getElementById('submittedWordsList');
-const tileCountsGrid = document.getElementById("tileCountsGrid");
-const bonusLetters = ["J", "K", "Q", "V", "X", "Z"];
-const dragPop = new Audio('assets/audio/drag-pop.mp3');
-const releasePop = new Audio('assets/audio/release-pop.mp3');
-const errorSound = new Audio('assets/audio/error.mp3');
-const gameOverSound = new Audio('assets/audio/game-over.mp3');
-
-let score = 0;
-let timer = null;
-let countdownTimer = null;
-let timeLeft = 300;
-const letterSet = {
-"A": 5,
-"B": 3,
-"C": 3,
-"D": 3,
-"E": 7,
-"F": 2,
-"G": 3,
-"H": 3,
-"I": 5,
-"J": 1,
-"K": 2,
-"L": 3,
-"M": 3,
-"N": 4,
-"O": 5,
-"P": 3,
-"Q": 1,
-"R": 4,
-"S": 4,
-"T": 4,
-"U": 3,
-"V": 2,
-"W": 2,
-"X": 1,
-"Y": 2,
-"Z": 1
+﻿'use strict';
+const $=id=>document.getElementById(id), C=PentaCore, audio=new GameAudio(), fx=new GameEffects();
+let mode='classic',s=null,clock=null,epoch=0,selection='queue',challenge=null;
+const safeRead=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
+const safeWrite=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
+let records=safeRead('pentalingo-rounds-v2',[]);if(!Array.isArray(records))records=[];
+const prefs=safeRead('pentalingo-audio',{});
+fx.setFull(safeRead('pentalingo-effects',true)!==false);
+function status(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error);if(error)audio.effect('error');}
+function seconds(){return s?Math.max(0,Math.ceil((s.deadline-Date.now())/1000)):C.duration(mode);}
+function live(){if(!s?.active)return false;if(seconds()<=0){endRound();return false;}return true;}
+function tile(letter,blank=false){return {letter,blank};}
+function seedCode(){return `${mode==='sprint'?'S':'C'}-${Math.random().toString(36).slice(2,10).toUpperCase()}`;}
+function startRound(){
+  if(s?.active)return;
+  audio.unlock();epoch++;clearInterval(clock);
+  fx.stage();
+  const code=challenge||(mode==='daily'?`D-${new Date().toISOString().slice(0,10)}`:seedCode());
+  const bag=C.deck(code),rows=Array.from({length:5},()=>{const index=bag.findIndex(l=>!'AEIOU'.includes(l));return [tile(bag.splice(index,1)[0])];});
+  s={active:true,code,mode,bag,rows,discard:[],queue:tile(bag.shift()),blanks:2,score:0,words:[],chain:1,lastBank:null,deadline:Date.now()+C.duration(mode)*1000,pending:new Set(),milestone:false};
+  const previous=records.filter(r=>r.mode===mode);
+  s.previousBest=previous.length?Math.max(...previous.map(r=>r.score)):null;s.bestCelebrated=false;s.bestChain=1;
+  $('rewardTitle').textContent='FIND YOUR FLOW';$('rewardDetail').textContent='Bank words. Build a streak.';$('rewardCard').dataset.tier='1';
+  selection='queue';clock=setInterval(tick,1000);audio.effect('start');status('Round on! Tap a lane or press 1–5 to place the selected letter.');render();
+  fx.drawTile(C.bonus.includes(s.queue.letter));
 }
-
-let queueTile = null;
-let currentTile = null;
-let touchStartX = 0;
-let touchStartY = 0;
-
-
-// Initialize the game
-let gameLetterSet = { ...letterSet }; // Copy the letter set for the game
-initializePool();
-initializeGameBoard();
-playButton.addEventListener("click", startGame);
-
-// Initialize the game board with empty cells
-function initializeGameBoard() {
-  const rows = 5; // Number of rows (words)
-  const cellsPerRow = 10; // Number of cells per row
-  gameBoard.innerHTML = ""; // Clear the board
-
-  for (let i = 0; i < rows; i++) {
-    const rowContainer = document.createElement("div");
-    rowContainer.classList.add("row-container");
-
-    const rowLabel = document.createElement("div");
-    rowLabel.classList.add("row-label");
-    rowLabel.textContent = `Word ${i + 1}`;
-
-    const row = document.createElement("div");
-    row.classList.add("word-row");
-    row.setAttribute("data-row-index", i);
-
-    for (let j = 0; j < cellsPerRow; j++) {
-      const cell = document.createElement("div");
-      cell.classList.add("cell", "empty");
-      cell.setAttribute("data-letter", ""); // Initialize empty letter
-      row.appendChild(cell);
+function tick(){if(!s?.active)return;if(seconds()<=0){endRound();return;}renderClock();if(s.lastBank!==null&&Date.now()-s.lastBank>C.comboWindow&&s.chain!==1){s.chain=1;$('combo').textContent='×1';}}
+function renderClock(){const left=seconds();$('timeLeft').textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;$('timeBar').style.width=`${left/C.duration(mode)*100}%`;$('timeBar').parentElement.classList.toggle('urgent',left<=30);$('comboFuse').style.width=`${s?.active&&s.lastBank!==null?Math.max(0,1-(Date.now()-s.lastBank)/C.comboWindow)*100:0}%`;}
+function place(index){
+  if(!live()||s.pending.has(index))return;
+  if(s.rows[index].length>=10){status('That lane is full. Bank its word or choose another lane.',true);return;}
+  let next;
+  if(selection==='wild'){if(!s.blanks)return;next=tile($('wildLetter').value,true);s.blanks--;}
+  else if(selection==='discard'){next=s.discard.shift();}
+  else {next=s.queue;if(next)s.queue=s.bag.length?tile(s.bag.shift()):null;}
+  if(!next){status('No tile selected. Try a discard or a wildcard.',true);return;}
+  const drewQueue=selection==='queue';
+  s.rows[index].push(next);selection='queue';audio.effect('place');render();status('Keep building, or bank a word with at least four letters.');
+  fx.place(index,s.rows[index].length,next.blank);if(drewQueue&&s.queue)fx.drawTile(C.bonus.includes(s.queue.letter));
+}
+function discard(){if(!live()||!s.queue)return;s.discard.unshift(s.queue);s.queue=s.bag.length?tile(s.bag.shift()):null;selection='queue';audio.effect('discard');render();status('Queue discarded. The newest discard is available to reuse.');if(s.queue)fx.drawTile(C.bonus.includes(s.queue.letter));}
+async function bank(index){
+  if(!live()||s.pending.has(index))return;const tiles=s.rows[index].slice(),word=tiles.map(t=>t.letter).join('');
+  if(word.length<4){status('Build at least four letters before banking.',true);fx.reject(index);return;}
+  if(s.words.some(w=>w.word===word)){s.chain=1;render();status('You already banked that word. Try something new.',true);return;}
+  const round=s,version=epoch;s.pending.add(index);render();status(`Checking ${word}…`);
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+  try{
+    const response=await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word.toLowerCase())}&max=1`,{signal:controller.signal});
+    if(!response.ok)throw new Error('Dictionary unavailable');const data=await response.json();
+    if(s!==round||epoch!==version||!live())return;
+    const valid=Array.isArray(data)&&data.some(item=>item.word?.toUpperCase()===word);
+    if(!valid){s.chain=1;status(`${word} isn’t in the dictionary. Keep building; your tiles are safe.`,true);fx.reject(index);return;}
+    // Another lane may have completed the same request while this one was pending.
+    if(s.words.some(w=>w.word===word)){status('That word has just been banked in another lane.',true);return;}
+    const now=Date.now();s.chain=C.combo(s.lastBank,now,s.chain);s.lastBank=now;
+    let points=C.points(tiles)+s.chain-1;s.words.push({word,points});s.score+=points;
+    const milestone=s.words.length===5&&!s.milestone;if(milestone){s.score+=5;s.milestone=true;}
+    s.bestChain=Math.max(s.bestChain,s.chain);
+    const personalBest=s.previousBest!==null&&s.score>s.previousBest&&!s.bestCelebrated;
+    if(personalBest)s.bestCelebrated=true;
+    fx.bank(index,tiles,points,s.chain,milestone,personalBest);
+    s.rows[index]=s.discard.length?[s.discard.shift()]:[];audio.effect(milestone||personalBest?'milestone':s.chain>1?'combo':'bank');status(`${word} banked for +${points}!${milestone?' Five-word milestone: +5 bonus!':''}${s.chain>1?` Combo ×${s.chain}!`:''}`);
+  }catch(error){if(s===round&&epoch===version&&live())status('Dictionary connection unavailable. Your tiles are safe; try banking again.',true);}
+  finally{clearTimeout(timeout);round.pending.delete(index);if(s===round)render();}
+}
+function endRound(){
+  if(!s?.active)return;s.active=false;epoch++;clearInterval(clock);const penalty=s.discard.length;s.score-=penalty;selection='queue';
+  records.push({score:s.score,mode:s.mode,code:s.code,words:s.words.length,date:new Date().toISOString()});records=records.sort((a,b)=>b.score-a.score).slice(0,30);safeWrite('pentalingo-rounds-v2',records);
+  const best=s.previousBest!==null&&s.score>s.previousBest;
+  audio.effect(best?'milestone':'end');render();$('resultTitle').textContent=best?'A new personal best!':s.words.length?'Words well played.':'Every round is a fresh start.';$('resultScore').textContent=s.score;$('resultDetail').textContent=`${s.words.length} words banked · ${penalty} discard penalty · ${s.code}`;
+  $('resultDialog').dataset.best=String(best);
+  $('resultHighlights').replaceChildren();
+  const longest=s.words.reduce((a,b)=>b.word.length>a.length?b.word:a,'');
+  for(const [label,value] of [['LONGEST WORD',longest||'—'],['BEST COMBO',`×${s.words.length?s.bestChain:1}`],['MILESTONE',s.milestone?'5 words ✓':`${s.words.length} / 5`]]){const item=document.createElement('div'),title=document.createElement('span'),detail=document.createElement('strong');title.textContent=label;detail.textContent=value;item.append(title,detail);$('resultHighlights').append(item);}
+  $('resultDialog').showModal();fx.finish(best);status('Round complete. Start again to chase a new best.');
+}
+function tileButton(t,selected,disabled=false){const el=document.createElement('button');el.type='button';el.className=`tile${C.bonus.includes(t.letter)&&!t.blank?' bonus':''}${t.blank?' blank':''}${selected?' selected':''}`;el.textContent=t.letter;el.disabled=disabled;el.setAttribute('aria-label',`${t.blank?'Wildcard ':''}${t.letter}`);return el;}
+function render(){
+  const active=!!s?.active;
+  $('arena').classList.toggle('is-playing',active);
+  $('milestoneProgress').textContent=s?.milestone?'BONUS BANKED!':`${Math.min(s?.words.length||0,5)} / 5 · +5 bonus`;
+  $('milestoneLabel').textContent=s?.milestone?'FIVE-WORD CLUB':'NEXT MILESTONE';
+  Array.from($('milestoneGems').children).forEach((gem,i)=>gem.classList.toggle('earned',i<(s?.words.length||0)));
+  $('score').textContent=s?.score||0;$('combo').textContent=`×${s?.chain||1}`;$('wordCount').textContent=s?.words.length||0;renderClock();
+  $('playButton').disabled=active;$('playButton').textContent=s?'Play again ↗':'Start round ↗';$('finishButton').disabled=!active;
+  document.querySelectorAll('[data-mode]').forEach(b=>{b.disabled=active;b.classList.toggle('active',b.dataset.mode===mode);b.setAttribute('aria-pressed',b.dataset.mode===mode);});
+  $('modeLabel').textContent=`${mode.toUpperCase()} ROUND`;$('roundTitle').textContent=active?'One letter. So many possibilities.':'Your next great word awaits.';$('roundHint').textContent=active?'Tap a lane to place. Bank a word to score.':'Start a round, then tap a lane to place your letter.';
+  const queue=$('queueTile');queue.textContent=s?.queue?.letter||'?';queue.disabled=!active||!s.queue;queue.className=`tile queue${selection==='queue'&&active?' selected':''}${s?.queue&&C.bonus.includes(s.queue.letter)?' bonus':''}`;queue.setAttribute('aria-label',s?.queue?`Select queue letter ${s.queue.letter}`:'Queue empty');queue.setAttribute('aria-pressed',selection==='queue');queue.draggable=active&&!!s.queue;
+  $('tilesLeft').textContent=`${s?.bag.length??Object.values(C.letters).reduce((a,b)=>a+b,0)} tiles in the bag`;
+  $('discardButton').disabled=!active||!s.queue;$('wildButton').disabled=!active||!s.blanks;$('wildButton').textContent=`${selection==='wild'?'Selected':'Use blank'} · ${s?.blanks??2} left`;$('wildButton').setAttribute('aria-pressed',selection==='wild');
+  $('wildLetter').disabled=!active;
+  for(let i=0;i<5;i++){
+    // Keep controls mounted so taps, keyboard focus and scroll position survive moves.
+    let lane=$('gameBoard').children[i];
+    if(!lane){
+    lane=document.createElement('div');lane.className='lane';const number=document.createElement('span');number.className='lane-number';number.textContent=String(i+1).padStart(2,'0');
+    const row=document.createElement('button');row.type='button';row.className='word-row';row.disabled=!active||s.pending.has(i);row.setAttribute('aria-label',`Place selected letter in lane ${i+1}: ${s?.rows[i].map(t=>t.letter).join('')||'empty'}`);row.onclick=()=>place(i);
+    for(let j=0;j<10;j++){const t=s?.rows[i][j],cell=document.createElement('span');cell.className=`tile${!t?' empty':t.blank?' blank':C.bonus.includes(t.letter)?' bonus':''}`;cell.textContent=t?.letter||'';row.append(cell);}
+    row.ondragover=e=>e.preventDefault();row.ondrop=e=>{e.preventDefault();place(i);};
+    const submit=document.createElement('button');submit.className='bank';submit.textContent=s?.pending.has(i)?'…':'Bank';submit.disabled=!active||s.pending.has(i);submit.setAttribute('aria-label',`Bank word in lane ${i+1}`);submit.onclick=()=>bank(i);lane.append(number,row,submit);$('gameBoard').append(lane);
     }
-
-    const submitButton = document.createElement("button");
-    submitButton.textContent = "Submit Word";
-    submitButton.addEventListener("click", () => submitWord(row));
-
-    rowContainer.appendChild(rowLabel);
-    rowContainer.appendChild(row);
-    rowContainer.appendChild(submitButton);
-    gameBoard.appendChild(rowContainer);
-  }
-
-  setupDragAndDrop(); // Ensure cells are ready for drag-and-drop
-}
-
-function initializePool() {
-  letterPool.innerHTML = ""; // Clear the pool
-
-  // Iterate through the gameLetterSet and generate the specified number of tiles for each letter
-  for (const [letter, count] of Object.entries(gameLetterSet)) {
-    for (let i = 0; i < count; i++) {
-      const tile = createTile(letter);
-      letterPool.appendChild(tile);
+    const row=lane.children[1],submit=lane.children[2];
+    row.disabled=!active||s.pending.has(i);
+    row.setAttribute('aria-label',`Place selected letter in lane ${i+1}: ${s?.rows[i].map(t=>t.letter).join('')||'empty'}`);
+    for(let j=0;j<10;j++){
+      const t=s?.rows[i][j],cell=row.children[j];
+      cell.className=`tile${!t?' empty':t.blank?' blank':C.bonus.includes(t.letter)?' bonus':''}`;
+      cell.textContent=t?.letter||'';
     }
+    submit.textContent=s?.pending.has(i)?'…':'Bank';submit.disabled=!active||s.pending.has(i);
+    lane.classList.toggle('ready',active&&s.rows[i].length>=4);lane.classList.toggle('checking',active&&s.pending.has(i));
   }
-
-  shufflePool();
+  $('discardPile').replaceChildren();s?.discard.forEach((t,i)=>{const b=tileButton(t,i===0&&selection==='discard',!active||i!==0);b.onclick=()=>{selection='discard';render();status('Discard selected. Tap a lane to use it.');};b.draggable=active&&i===0;b.ondragstart=()=>{selection='discard';};$('discardPile').append(b);});
+  $('roundCode').textContent=s?`Round: ${s.code}`:challenge?`Loaded: ${challenge}`:'Start a round to get your code.';
+  $('shareButton').disabled=!s;$('submittedWordsList').replaceChildren();
+  if(!s?.words.length){const li=document.createElement('li');li.className='empty-state';li.textContent='Your word wins will appear here.';$('submittedWordsList').append(li);}
+  s?.words.slice().reverse().forEach(w=>{const li=document.createElement('li'),pts=document.createElement('span');li.textContent=w.word;pts.textContent=`+${w.points}`;li.append(pts);$('submittedWordsList').append(li);});
+  const longest=s?.words.reduce((a,b)=>b.word.length>a.length?b.word:a,'');$('bestWord').textContent=longest?`Longest: ${longest}`:'Go for a long one';
+  $('tileCountsGrid').replaceChildren();for(const letter of Object.keys(C.letters)){const el=document.createElement('div'),count=document.createElement('span');el.className=C.bonus.includes(letter)?'bonus':'';el.textContent=letter;count.textContent=s?s.bag.filter(l=>l===letter).length:C.letters[letter];el.append(count);$('tileCountsGrid').append(el);}
+  $('leaderboard').replaceChildren();const top=records.filter(r=>r.mode===mode).slice(0,5);if(!top.length){const li=document.createElement('li');li.className='empty-state';li.textContent='A fresh leaderboard. Set the first score.';$('leaderboard').append(li);}top.forEach((r,i)=>{const li=document.createElement('li'),label=document.createElement('span'),detail=document.createElement('small'),score=document.createElement('strong');label.textContent=`${i+1}. ${r.mode==='daily'?'Daily challenge':r.mode==='sprint'?'Sprint':'Classic'}`;detail.textContent=`${r.words} words · ${String(r.date).slice(0,10)}`;label.append(detail);score.textContent=r.score;li.append(label,score);$('leaderboard').append(li);});
 }
-
-// Shuffle the tiles in the letter pool for randomness
-function shufflePool() {
-  const tiles = Array.from(letterPool.children);
-  letterPool.innerHTML = ""; // Clear the pool temporarily
-  while (tiles.length) {
-    const randomIndex = Math.floor(Math.random() * tiles.length);
-    letterPool.appendChild(tiles.splice(randomIndex, 1)[0]); // Append a random tile back
-  }
-}
-
-// Create a tile element
-function createTile(letter) {
-  const tile = document.createElement("div");
-  tile.classList.add("cell");
-  if (bonusLetters.includes(letter)) {
-    tile.classList.add("bonus");
-  }
-  tile.textContent = letter;
-  tile.setAttribute("data-letter", letter);
-  tile.draggable = true;
-
-  // Drag event listeners
-  tile.addEventListener("dragstart", handleDragStart);
-  tile.addEventListener("dragend", handleDragEnd);
-
-  // Touch event listeners for mobile support
-  tile.addEventListener("touchstart", handleTouchStart, { passive: true });
-  tile.addEventListener("touchmove", handleTouchMove, { passive: false });
-  tile.addEventListener("touchend", handleTouchEnd);
-
-  return tile;
-}
-
-function handleDragStart(event) {
-  const validParents = [letterRack, discardPile]; // Allow dragging from both the letterRack and discardPile
-
-  if (!validParents.includes(event.target.parentElement)) {
-    event.preventDefault(); // Prevent dragging from invalid parents
-    return;
-  }
-  dragPop.play();
-  event.dataTransfer.setData("text/plain", event.target.getAttribute("data-letter"));
-  currentTile = event.target; // Keep track of the dragged tile
-  setTimeout(() => {
-    event.target.style.display = "none"; // Hide the dragged tile for visual feedback
-  }, 0);
-}
-
-// Handle drag end
-function handleDragEnd(event) {
-  // Restore visibility after dragging ends
-  event.target.style.display = "";
-}
-
-function handleTouchStart(event) {
-  const touch = event.touches[0];
-  touchStartX = touch.clientX;
-  touchStartY = touch.clientY;
-  dragPop.play();
-
-  // Emulate drag start
-  currentTile = event.target;
-  currentTile.classList.add("dragging");
-}
-
-function handleTouchMove(event) {
-  event.preventDefault(); // Prevent scrolling during touch movement
-
-  const touch = event.touches[0];
-  const x = touch.clientX;
-  const y = touch.clientY;
-
-  // Move the tile with the touch
-  currentTile.style.position = "absolute";
-  currentTile.style.left = `${x - touchStartX}px`;
-  currentTile.style.top = `${y - touchStartY}px`;
-}
-
-function handleTouchEnd(event) {
-  currentTile.classList.remove("dragging");
-  currentTile.style.position = ""; // Reset position styles
-  currentTile.style.left = "";
-  currentTile.style.top = "";
-
-  // Emulate drop behavior
-  const targetElement = document.elementFromPoint(
-    event.changedTouches[0].clientX,
-    event.changedTouches[0].clientY
-  );
-
-  if (targetElement && targetElement.classList.contains("cell")) {
-    const firstEmptyCell = findFirstEmptyCell(targetElement.parentElement);
-    if (firstEmptyCell) {
-      releasePop.play();
-      const letter = currentTile.getAttribute("data-letter");
-
-      // Update the cell with the dropped letter
-      firstEmptyCell.textContent = letter;
-      firstEmptyCell.setAttribute("data-letter", letter);
-      firstEmptyCell.classList.remove("empty");
-      firstEmptyCell.classList.add("filled");
-      if (bonusLetters.includes(letter)) {
-        firstEmptyCell.classList.add("bonus");
-      }
-
-      // Remove the tile from the rack
-      currentTile.remove();
-      currentTile = null;
-    }
-  } else {
-    // Return the tile to its original position if not dropped correctly
-    currentTile.style.position = "";
-    currentTile.style.left = "";
-    currentTile.style.top = "";
-  }
-}
-
-function handleTouchMove(event) {
-  event.preventDefault();
-  const touch = event.touches[0];
-  const x = touch.clientX;
-  const y = touch.clientY;
-
-  currentTile.style.position = "absolute";
-  currentTile.style.left = `${x - touchStartX}px`;
-  currentTile.style.top = `${y - touchStartY}px`;
-
-  const targetElement = document.elementFromPoint(x, y);
-  document.querySelectorAll(".cell.drag-over").forEach(cell =>
-    cell.classList.remove("drag-over")
-  );
-
-  if (targetElement && targetElement.classList.contains("cell")) {
-    targetElement.classList.add("drag-over");
-  }
-}
-
-// Allow dropping on the farthest left empty cell in each row
-function setupDragAndDrop() {
-  const rows = document.querySelectorAll(".word-row");
-
-  // Set up drag-and-drop for each row
-  rows.forEach(row => {
-    row.addEventListener("dragover", event => {
-      const firstEmptyCell = findFirstEmptyCell(row);
-      if (firstEmptyCell) {
-        event.preventDefault(); // Allow dropping only if there is an empty cell
-        firstEmptyCell.classList.add("drag-over"); // Highlight the first empty cell
-      }
-    });
-
-    row.addEventListener("dragleave", () => {
-      // Remove drag-over class from all empty cells to avoid inconsistency
-      row.querySelectorAll(".cell.empty").forEach(cell => cell.classList.remove("drag-over"));
-    });
-
-    row.addEventListener("drop", event => {
-      const firstEmptyCell = findFirstEmptyCell(row);
-      const allRows = document.querySelectorAll(".word-row"); // Adjust selector for your rows
-      const firstCellsFilled = Array.from(allRows).every(row => {
-        const firstCell = row.querySelector(".cell"); // Adjust selector for first cell
-        return firstCell && firstCell.classList.contains("filled");
-      });
-
-      // Check if the first empty cell is not the first cell
-      const firstCellInRow = row.querySelector(".cell");
-
-      // Proceed with the drop
-      if (firstEmptyCell && currentTile) {
-        releasePop.play();
-        const letter = event.dataTransfer.getData("text/plain");
-
-        // Update the cell with the dropped letter
-        firstEmptyCell.textContent = letter;
-        firstEmptyCell.setAttribute("data-letter", letter);
-        firstEmptyCell.classList.remove("empty", "drag-over");
-        firstEmptyCell.classList.add("filled");
-        if (bonusLetters.includes(letter)) {
-            firstEmptyCell.classList.add("bonus");
-        }
-
-        // Ensure a new tile is drawn after a valid drop
-        if (queueTile === currentTile) {
-          queueTile = null; // Reset queueTile
-          drawTile();
-        }
-
-        // Remove the tile from the rack
-        currentTile.remove();
-        currentTile = null;
-
-        // Make the next latest discarded tile draggable
-        const discardedTiles = Array.from(discardPile.children);
-        discardedTiles.forEach((tile, index) => {
-          tile.draggable = index === 0; // Only make the first tile draggable
-        });
-      }
-    });
-  });
-
-  // Set up drag-and-drop for the discard pile
-  discardPile.addEventListener("dragover", event => {
-    event.preventDefault(); // Allow dropping into the discard pile
-  });
-
-  discardPile.addEventListener("drop", event => {
-    releasePop.play();
-    event.preventDefault();
-
-    if (currentTile && currentTile === queueTile) {
-      // Move the current tile to the discard pile
-      discardPile.prepend(currentTile);
-
-      // Ensure only the first (newest) tile is draggable
-      const discardedTiles = Array.from(discardPile.children);
-      discardedTiles.forEach((tile, index) => {
-        tile.draggable = index === 0; // Only make the first tile draggable
-      });
-
-      queueTile = null; // Reset queueTile
-      drawTile(); // Draw a new tile after valid discard
-      currentTile = null;
-    }
-  });
-
-  discardPile.addEventListener("dragstart", event => {
-    currentTile = event.target;
-    dragPop.play();
-  });
-
-  discardPile.addEventListener("dragend", event => {
-    // Handle cases where a tile is dragged out of the discard pile but not dropped
-    if (currentTile && currentTile.parentElement !== discardPile) {
-      currentTile.remove();
-      currentTile = null;
-      releasePop.play();
-
-      // Update draggability for remaining tiles in the discard pile
-      const discardedTiles = Array.from(discardPile.children);
-      discardedTiles.forEach((tile, index) => {
-        tile.draggable = index === 0; // Ensure the first tile remains draggable
-      });
-    }
-  });
-}
-
-// Find the first empty cell in a row
-function findFirstEmptyCell(row) {
-  return Array.from(row.children).find(cell => cell.classList.contains("empty"));
-}
-
-// Start the game
-function startGame() {
-  gameLetterSet = { ...letterSet }; // Copy the letter set for the game
-  resetGame();
-  drawRandomConsonants();
-  updateTileCounts();
-  startCountdown();
-  timer = setInterval(() => {
-    if (!queueTile) {
-      drawTile();
-    }
-  }, 50);
-}
-
-// Draw a tile from the pool
-function drawTile() {
-  if (queueTile) {
-    return;
-  }
-
-  if (letterPool.children.length > 0) {
-    const tile = letterPool.firstChild;
-    queueTile = tile;
-    letterRack.appendChild(tile);
-    const letter = tile.getAttribute("data-letter");
-    removeLetterFromSet(letter);
-    updateTileCounts();
-  } else {
-    clearInterval(timer);
-    alert("No more tiles in the pool!");
-    endGame();
-  }
-}
-
-function drawRandomConsonants() {
-  const consonants = Array.from(letterPool.children).filter(tile => {
-    const letter = tile.textContent.toUpperCase();
-    return !["A", "E", "I", "O", "U"].includes(letter); // Filter out vowels
-  });
-
-  const randomTile = consonants[0];
-  const letter = randomTile.getAttribute("data-letter");
-  removeLetterFromSet(letter);
-
-  wordRows = document.querySelectorAll('.word-row');
-  wordRows.forEach((row, index) => {
-    const randomTile = consonants[index]; // Assign a unique consonant to each row
-    const letter = randomTile.getAttribute("data-letter");
-
-    const firstEmptyCell = findFirstEmptyCell(row);
-    if (firstEmptyCell) {
-      firstEmptyCell.textContent = letter;
-      firstEmptyCell.setAttribute("data-letter", letter);
-      firstEmptyCell.classList.remove("empty", "drag-over");
-      firstEmptyCell.classList.add("filled");
-      if (bonusLetters.includes(letter)) {
-        firstEmptyCell.classList.add("bonus");
-      }
-
-      // Remove the used tile from the pool
-      letterPool.removeChild(randomTile);
-    }
-  });
-}
-
-// Submit a word for a specific row
-async function submitWord(row) {
-  const cells = Array.from(row.children);
-  const word = cells
-    .map(cell => cell.getAttribute("data-letter") || "")
-    .join("");
-
-  if (word.trim().length < 4) {
-    alert("Word must be at least 4 letters long!");
-    return;
-  }
-
-  // Validate the word
-  const isValid = await validateWord(word);
-
-  if (isValid) {
-    // Basic points for completing a word
-    let wordScore = 1; // +1 for a completed word
-
-    // Points for letters beyond 4 in the word
-    if (word.length > 4) {
-      wordScore += word.length - 4;
-    }
-
-    // Bonus points for specific letters
-    word.split("").forEach(letter => {
-      if (bonusLetters.includes(letter.toUpperCase())) {
-        wordScore += 3; // +3 for each bonus letter
-      }
-    });
-
-    // Update the total score
-    score += wordScore;
-    scoreDisplay.textContent = score;
-
-    addWordToList(word);
-
-    // Clear the row
-    cells.forEach(cell => {
-      cell.textContent = "";
-      cell.setAttribute("data-letter", "");
-      cell.classList.remove("filled");
-      cell.classList.remove("bonus");
-      cell.classList.add("empty");
-    });
-
-    // Move the last tile from the discard pile to the first slot of the row
-    const discardPileArray = getDiscardPileArray(); // Create the array from the current discard pile
-    if (discardPileArray.length > 0) {
-      const lastTile = discardPileArray.shift(); // Remove the last tile from the discard pile
-      const firstCell = cells.find(cell => cell.getAttribute("data-letter") === ""); // Find the first empty slot
-
-      if (firstCell) {
-        firstCell.textContent = lastTile.letter; // Set the letter in the cell
-        firstCell.setAttribute("data-letter", lastTile.letter); // Update the data-letter attribute
-        firstCell.classList.remove("empty");
-        firstCell.classList.add("filled");
-
-        // If the tile is a bonus tile, update its appearance
-        if (bonusLetters.includes(lastTile.letter.toUpperCase())) {
-          firstCell.classList.add("bonus");
-        }
-        removeFromDiscardPile(); // Remove the last tile from the discard pile
-        // Ensure only the first (newest) tile is draggable
-        const discardedTiles = Array.from(discardPile.children);
-        discardedTiles.forEach((tile, index) => {
-          tile.draggable = index === 0; // Only make the first tile draggable
-        });
-      }
-    }
-
-    else {
-
-      if (queueTile) {
-        const letter = queueTile.getAttribute("data-letter");
-        const firstCell = cells.find(cell => cell.getAttribute("data-letter") === ""); // Find the first empty slot
-
-        if (firstCell) {
-          firstCell.textContent = letter; // Set the letter in the cell
-          firstCell.setAttribute("data-letter", letter); // Update the data-letter attribute
-          firstCell.classList.remove("empty");
-          firstCell.classList.add("filled");
-
-          // If the tile is a bonus tile, update its appearance
-          if (bonusLetters.includes(letter.toUpperCase())) {
-            firstCell.classList.add("bonus");
-          }
-
-          letterRack.removeChild(queueTile); // Remove the tile from the rack
-          queueTile = null; // Reset queueTile
-          drawTile(); // Draw a new tile after a valid drop
-        }
-      }
-
-      else {
-        clearInterval(timer);
-        alert("No more tiles in the pool!");
-        endGame();
-      }
-    }
-
-  } else {
-    errorSound.play();
-    alert(`"${word}" is not a valid word!`);
-  }
-}
-
-function addWordToList(word) {
-    const listItem = document.createElement('li');
-    listItem.textContent = word;
-    listItem.classList.add('list-group-item');
-    submittedWordsList.appendChild(listItem);
-}
-
-// Function to create an array from the child tiles in the discard pile
-function getDiscardPileArray() {
-  const childTiles = discardPile.children;
-
-  // Convert child elements to an array of objects with letter data
-  return Array.from(childTiles).map(tile => ({
-    letter: tile.getAttribute("data-letter"),
-    isBonus: tile.classList.contains("bonus"),
-  }));
-}
-
-// Function to remove the last tile from the discard pile
-function removeFromDiscardPile() {
-  const discardPileDiv = document.getElementById("discardPile");
-  const lastTileDiv = discardPileDiv.firstElementChild; // Get the last tile in the DOM
-
-  if (lastTileDiv) {
-    const lastTile = {
-      letter: lastTileDiv.getAttribute("data-letter"),
-      isBonus: lastTileDiv.classList.contains("bonus"),
-    };
-
-    discardPileDiv.removeChild(lastTileDiv); // Remove from the DOM
-    return lastTile; // Return the removed tile as an object
-  }
-  return null; // Return null if the discard pile is empty
-}
-
-function calculateDiscardPenalties() {
-  const unusedLetters = discardPile.children.length;
-  const penalty = -unusedLetters; // -1 point per unused letter
-
-  // Update the total score
-  score += penalty;
-  scoreDisplay.textContent = score;
-
-  return penalty;
-}
-
-// Countdown timer logic
-function startCountdown() {
-  timeLeft = 300;
-  updateTimerDisplay();
-
-  countdownTimer = setInterval(() => {
-    timeLeft--;
-    updateTimerDisplay();
-
-    if (timeLeft <= 0) {
-      clearInterval(countdownTimer);
-      clearInterval(timer);
-      endGame();
-    }
-  }, 1000);
-}
-
-function updateTimerDisplay() {
-  timeLeftDisplay.textContent = timeLeft;
-}
-
-function updateTileCounts() {
-  // Clear the previous grid
-  tileCountsGrid.innerHTML = "";
-
-  // Iterate through the gameLetterSet and create grid items
-  for (const [letter, count] of Object.entries(gameLetterSet)) {
-    const gridItem = document.createElement("div");
-    gridItem.classList.add("grid-item");
-    gridItem.innerHTML = `
-      <span>${letter}</span>
-      <span>${count}</span>
-    `;
-    tileCountsGrid.appendChild(gridItem);
-  }
-}
-
-function removeLetterFromSet(letter) {
-  gameLetterSet[letter] -= 1;
-  updateTileCounts(); // Update the grid after modification
-}
-
-// Reset the game
-function resetGame() {
-  clearInterval(timer); // Clear the tile drawing timer
-  clearInterval(countdownTimer); // Clear the countdown timer
-  currentTile = null; // Reset the current tile
-    queueTile = null; // Reset the queue tile
-  score = 0; // Reset the score
-  timeLeft = 300; // Reset the timer
-  scoreDisplay.textContent = score; // Update the score display
-  timeLeftDisplay.textContent = timeLeft; // Update the timer display
-
-  // Clear the letterRack and discardPile
-  letterRack.innerHTML = ""; // Clear all tiles from the rack
-  discardPile.innerHTML = ""; // Clear all tiles from the discard pile
-
-  // Reinitialize the game
-  initializePool(); // Reset the letter pool
-  initializeGameBoard(); // Reset the game board
-  submittedWordsList.innerHTML = ""; // Clear the submitted words list
-  updateTileCounts(); // Update the tile counts grid
-}
-
-async function validateWord(word) {
-  const apiUrl = `https://api.datamuse.com/words?sp=${word}&max=1`;
-
-  try {
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-
-    // Check if the word exists in the dictionary
-    if (data.length > 0 && data[0].word.toLowerCase() === word.toLowerCase()) {
-      return true; // The word exists
-    }
-    return false; // The word does not exist
-  } catch (error) {
-    alert("Error validating word:", error);
-    return false; // Return false if there's an error
-  }
-}
-
-function endGame() {
-  clearInterval(countdownTimer);
-  clearInterval(timer);
-
-  // Calculate penalties for unused letters
-  const penalty = calculateDiscardPenalties();
-  gameOverSound.play();
-  alert(`Game over! Final Score: ${score} (Discard penalty: ${penalty} points)`);
-}
+async function copy(text){try{await navigator.clipboard.writeText(text);status('Copied! Send it to a friend.');}catch{window.prompt('Copy and share:',text);}}
+function link(){const url=new URL(location.href);url.searchParams.set('challenge',s.code);return url.href;}
+function loadCode(raw){if(s?.active){status('Finish this round before loading a challenge.',true);return;}const code=raw.trim().toUpperCase();if(!/^(?:[CS]-[A-Z0-9]{1,20}|D-\d{4}-\d{2}-\d{2})$/.test(code)){status('Use a round code such as C-ABC123, S-ABC123 or D-2026-11-11.',true);return;}challenge=code;mode=code.startsWith('S-')?'sprint':code.startsWith('D-')?'daily':'classic';render();status('Challenge loaded. Start the round when you’re ready.');}
+$('playButton').onclick=startRound;$('finishButton').onclick=endRound;$('discardButton').onclick=discard;$('queueTile').onclick=()=>{selection='queue';render();};$('queueTile').ondragstart=()=>{selection='queue';};$('discardPile').ondragover=e=>e.preventDefault();$('discardPile').ondrop=e=>{e.preventDefault();if(selection==='queue')discard();};
+$('wildButton').onclick=()=>{if(live()&&s.blanks){selection='wild';render();status('Wildcard selected. Choose a letter, then tap a lane.');}};
+$('helpButton').onclick=()=>$('helpDialog').showModal();document.querySelectorAll('.dialog-close').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$('loadButton').onclick=()=>loadCode($('challengeCode').value);$('shareButton').onclick=()=>s&&copy(link());$('copyResult').onclick=()=>s&&copy(`PentaLingo · ${s.score} points · ${s.words.length} words\nBeat my ${s.mode} round: ${link()}`);
+$('effectsButton').onclick=()=>{fx.setFull(!fx.full);safeWrite('pentalingo-effects',fx.full);effectsLabel();};
+function effectsLabel(){$('effectsButton').textContent=`Effects ${fx.full?'full':'calm'}`;$('effectsButton').setAttribute('aria-pressed',fx.full);}
+effectsLabel();
+for(const letter of Object.keys(C.letters)){const o=document.createElement('option');o.value=o.textContent=letter;$('wildLetter').append(o);}
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{if(s?.active)return;mode=b.dataset.mode;challenge=null;s=null;render();});
+function audioLabels(){$('soundButton').textContent=`Sound ${audio.sound?'on':'off'}`;$('soundButton').setAttribute('aria-pressed',audio.sound);$('musicButton').textContent=`Music ${audio.music?'on':'off'}`;$('musicButton').setAttribute('aria-pressed',audio.music);safeWrite('pentalingo-audio',{sound:audio.sound,music:audio.music});}
+$('soundButton').onclick=()=>{audio.unlock();audio.sound=!audio.sound;audio.effect('place');audioLabels();};$('musicButton').onclick=()=>{audio.setMusic(!audio.music);audioLabels();};audio.sound=!!prefs?.sound;
+// Saved music preferences only resume after a user gesture, respecting autoplay rules.
+if(prefs?.music)document.addEventListener('pointerdown',()=>{audio.setMusic(true);audioLabels();},{once:true});audioLabels();
+document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.repeat||document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(/^[1-5]$/.test(e.key)){e.preventDefault();place(Number(e.key)-1);}if(e.key.toLowerCase()==='d'){e.preventDefault();discard();}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+render();const initialCode=new URL(location.href).searchParams.get('challenge');if(initialCode){$('challengeCode').value=initialCode;loadCode(initialCode);}

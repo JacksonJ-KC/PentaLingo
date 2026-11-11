@@ -1,0 +1,18 @@
+﻿<!doctype html><meta charset="utf-8"><title>Reduced motion checks</title>
+<iframe id="app" src="../index.html" style="width:320px;height:700px;border:0"></iframe><pre id="results">Loading…</pre>
+<script>
+app.onload=async()=>{
+ const win=app.contentWindow,doc=app.contentDocument,results=[];
+ const check=(name,pass)=>results.push({name,pass});
+ try {
+ check('Browser reduced-motion preference is enabled',win.matchMedia('(prefers-reduced-motion: reduce)').matches);
+ win.eval("fx.setFull(true);loadCode('C-CALM');startRound();s.queue=tile('Q');render();fx.drawTile(true)");
+ check('System reduced motion overrides full effects',win.eval('!fx.moving&&fx.frame===0&&fx.animations.size===0'));
+ check('No flying tokens or callouts under reduced motion',doc.querySelectorAll('.fx-token,.fx-label').length===0);
+ check('CSS sheen is disabled under reduced motion',win.getComputedStyle(doc.getElementById('queueTile'),'::after').animationName==='none');
+ const row=doc.querySelector('.word-row');row.click();
+ check('Reduced motion does not prevent tile placement',win.eval('s.rows[0].length===2'));
+ } catch(e){results.push({name:e.stack,pass:false});}
+ document.getElementById('results').textContent=JSON.stringify(results,null,2);
+};
+</script>

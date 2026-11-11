@@ -1,0 +1,27 @@
+﻿<!doctype html><meta charset="utf-8"><title>Mobile layout checks</title>
+<iframe id="app" src="../index.html" style="border:0;width:390px;height:844px"></iframe><pre id="results">Loading…</pre>
+<script>
+app.onload=async()=>{
+ const win=app.contentWindow,doc=app.contentDocument,results=[];
+ const check=(name,pass)=>results.push({name,pass});
+ try{
+ for(const width of [320,360,390,540,768]){
+ app.style.width=width+'px';await new Promise(r=>setTimeout(r,100));
+ check(width+'px: no page overflow',doc.documentElement.scrollWidth<=width);
+ const row=doc.querySelector('.word-row'),bank=doc.querySelector('.bank');
+ check(width+'px: lane and Bank tap targets',row.getBoundingClientRect().height>=44&&bank.getBoundingClientRect().height>=44);
+ }
+ app.style.width='320px';await new Promise(r=>setTimeout(r,100));
+ doc.getElementById('playButton').click();
+ const row=doc.querySelector('.word-row');row.focus();row.click();
+ check('Board controls retain focus after placement',doc.activeElement===row);
+ check('Round dashboard sticks on phones',win.getComputedStyle(doc.querySelector('.round-dashboard')).position==='sticky');
+ for(let i=0;i<8;i++)row.click();
+ check('Ten-letter lane fits at 320px',row.lastElementChild.getBoundingClientRect().right<=row.getBoundingClientRect().right+1);
+ doc.getElementById('finishButton').click();
+ check('Result dialog opens',doc.getElementById('resultDialog').open);
+ check('No overflow after a full lane and result',doc.documentElement.scrollWidth<=320);
+ }catch(e){results.push({name:e.stack,pass:false});}
+ document.getElementById('results').textContent=JSON.stringify(results,null,2);
+};
+</script>
