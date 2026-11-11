@@ -12,10 +12,11 @@ app.onload=async()=>{
  doc.getElementById('mobileMenuButton').click();doc.querySelector('[data-mode="sprint"]').click();doc.getElementById('mobileMenu').close();
  doc.getElementById('playButton').click();win.eval('fx.setFull(false);discard()');
  check('Round mode chosen from the menu starts correctly',win.eval('s.active&&s.mode==="sprint"'));
- for(const [width,height] of [[320,480],[320,568],[360,640],[390,664],[390,844],[412,732],[768,1024],[568,320],[844,390],[915,412],[1024,480]]){
+ for(const [width,height] of [[320,480],[320,568],[360,640],[390,664],[390,844],[412,732],[768,1024],[1024,768],[568,320],[844,390],[915,412],[1024,480]]){
  app.style.width=width+'px';app.style.height=height+'px';await wait();
  const label=width+'×'+height;
  check(label+': no page scroll in either direction',doc.scrollingElement.scrollHeight<=height+1&&doc.scrollingElement.scrollWidth<=width+1);
+ check(label+': gameplay fills the available screen',doc.getElementById('arena').getBoundingClientRect().height>=height-doc.querySelector('.header').getBoundingClientRect().height-10);
  check(label+': all five lanes and Bank buttons are visible',[...doc.querySelectorAll('.word-row,.bank')].every(fits));
  check(label+': placement and Bank targets remain at least 44px high',[...doc.querySelectorAll('.word-row,.bank')].every(el=>el.getBoundingClientRect().height>=44));
  check(label+': queue, reuse, wildcards, discard and menu fit on screen',['queueTile','queuePreview','discardButton','wildLetter','wildButton','mobileMenuButton'].every(id=>fits(doc.getElementById(id)))&&fits(doc.querySelector('#discardPile button')));

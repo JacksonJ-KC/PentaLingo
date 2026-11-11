@@ -176,7 +176,7 @@ document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.rep
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
 // Move the existing controls rather than clone them, retaining handlers and round state.
 if(typeof window!=='undefined'){
-  const mobileLayout=window.matchMedia('(max-width: 850px), (max-width: 1024px) and (max-height: 500px)');
+  const mobileLayout=window.matchMedia('(max-width: 1024px)');
   const extras=Array.from(document.querySelector('aside').children);
   const homes=[
     [document.querySelector('.header-actions'),'mobileSettings'],

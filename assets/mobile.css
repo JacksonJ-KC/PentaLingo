@@ -16,7 +16,7 @@
 .mobile-pane .milestone-track { padding: 10px 0; }
 #mobileRoundActions button { width: 100%; min-height: 44px; }
 
-@media (max-width: 850px), (max-width: 1024px) and (max-height: 500px) {
+@media (max-width: 1024px) {
   html { height: 100%; overflow: hidden; }
   body { height: 100vh; height: 100dvh; overflow: hidden; display: grid; grid-template-rows: calc(48px + env(safe-area-inset-top, 0px)) minmax(0, 1fr); }
   .header { width: 100%; max-width: none; margin: 0; padding: env(safe-area-inset-top, 0px) max(8px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); flex-wrap: nowrap; gap: 8px; }
@@ -25,7 +25,7 @@
   .tag, .header > .header-actions { display: none; }
   .mobile-menu-button { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 76px; height: 44px; padding: 5px 10px; font-size: 15px; }
   .mobile-menu-button span { font-size: 12px; }
-  main { width: 100%; min-height: 0; max-width: none; padding: 4px max(6px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); }
+  main { width: 100%; height: 100%; min-height: 0; max-width: none; margin: 0; padding: 4px max(6px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); }
   .intro, footer, .layout > aside, .arena-top { display: none; }
   .layout { height: 100%; display: block; }
   .arena { height: 100%; min-height: 0; padding: 8px; border-radius: 12px; display: grid; grid-template-areas: 'stats' 'clock' 'queue' 'reward' 'board' 'tools' 'status'; grid-template-rows: 38px 2px 64px 28px minmax(236px, 1fr) 44px 32px; gap: 4px; }
