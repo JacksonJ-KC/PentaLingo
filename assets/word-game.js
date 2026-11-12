@@ -3,6 +3,7 @@ const $=id=>document.getElementById(id), C=PentaCore, audio=new GameAudio(), fx=
 let mode='classic',s=null,clock=null,epoch=0,selection='queue',challenge=null;
 let dragSession=null,suppressClickUntil=0;
 let placementTimer=null;
+let discardTimer=null;
 const placementDelay=1000;
 let placementGesture=null;
 const handledPlacementEvents=new WeakSet();
@@ -73,6 +74,7 @@ function startRound(){
   if(s?.active)return;
   audio.unlock();epoch++;clearInterval(clock);
   clearTimeout(placementTimer);
+  clearTimeout(discardTimer);
   dragSession=null;suppressClickUntil=0;
   placementGesture=null;
   fx.stage();
@@ -80,6 +82,7 @@ function startRound(){
   const bag=C.deck(code),rows=Array.from({length:5},()=>{const index=bag.findIndex(l=>!'AEIOU'.includes(l));return [tile(bag.splice(index,1)[0])];});
   s={active:true,code,mode,bag,rows,discard:[],queue:tile(bag.shift()),blanks:2,score:0,words:[],chain:1,lastBank:null,deadline:Date.now()+C.duration(mode)*1000,pending:new Set(),milestone:false};
   s.nextPlacementAt=0;
+  s.nextDiscardAt=0;
   const previous=records.filter(r=>r.mode===mode);
   s.previousBest=previous.length?Math.max(...previous.map(r=>r.score)):null;s.bestCelebrated=false;s.bestChain=1;
   $('rewardTitle').textContent='FIND YOUR FLOW';$('rewardDetail').textContent='Bank words. Build a streak.';$('rewardCard').dataset.tier='1';
@@ -106,7 +109,15 @@ function place(index){
   s.rows[index].push(next);selection='queue';audio.effect('place');render();status('Tile placed. Next placement ready in one second.');
   fx.place(index,s.rows[index].length,next.blank);if(drewQueue&&s.queue)fx.drawTile(C.bonus.includes(s.queue.letter));
 }
-function discard(){if(!live()||!s.queue)return;s.discard.unshift(s.queue);s.queue=s.bag.length?tile(s.bag.shift()):null;selection='queue';audio.effect('discard');render();status('Queue discarded. The newest discard is available to reuse.');if(s.queue)fx.drawTile(C.bonus.includes(s.queue.letter));}
+function discard(){
+  if(!live()||!s.queue||Date.now()<s.nextDiscardAt)return;
+  // Guard the mutation itself so clicks, drops and shortcuts share the limit.
+  s.nextDiscardAt=Date.now()+placementDelay;
+  const round=s;
+  clearTimeout(discardTimer);
+  discardTimer=setTimeout(()=>{if(s===round&&s.active)render();},placementDelay);
+  s.discard.unshift(s.queue);s.queue=s.bag.length?tile(s.bag.shift()):null;selection='queue';audio.effect('discard');render();status('Queue discarded. Next discard ready in one second.');if(s.queue)fx.drawTile(C.bonus.includes(s.queue.letter));
+}
 async function bank(index){
   if(!live()||s.pending.has(index))return;const tiles=s.rows[index].slice(),word=tiles.map(t=>t.letter).join('');
   if(word.length<4){status('Build at least four letters before banking.',true);fx.reject(index);return;}
@@ -135,6 +146,7 @@ async function bank(index){
 function endRound(){
   if(!s?.active)return;s.active=false;epoch++;clearInterval(clock);const penalty=s.discard.length;s.score-=penalty;selection='queue';
   clearTimeout(placementTimer);
+  clearTimeout(discardTimer);
   records.push({score:s.score,mode:s.mode,code:s.code,words:s.words.length,date:new Date().toISOString()});records=records.sort((a,b)=>b.score-a.score).slice(0,30);safeWrite('pentalingo-rounds-v2',records);
   const best=s.previousBest!==null&&s.score>s.previousBest;
   audio.effect(best?'milestone':'end');render();$('resultTitle').textContent=best?'A new personal best!':s.words.length?'Words well played.':'Every round is a fresh start.';$('resultScore').textContent=s.score;$('resultDetail').textContent=`${s.words.length} words banked · ${penalty} discard penalty · ${s.code}`;
@@ -166,7 +178,7 @@ function render(){
     $('queuePreview').append(preview);
   }
   $('tilesLeft').textContent=`${s?.bag.length??Object.values(C.letters).reduce((a,b)=>a+b,0)} tiles in the bag`;
-  $('discardButton').disabled=!active||!s.queue;$('wildButton').disabled=!active||!s.blanks;$('wildButton').textContent=`${selection==='wild'?'Selected':'Use blank'} · ${s?.blanks??2} left`;$('wildButton').setAttribute('aria-pressed',selection==='wild');
+  $('discardButton').disabled=!active||!s.queue||Date.now()<s.nextDiscardAt;$('wildButton').disabled=!active||!s.blanks;$('wildButton').textContent=`${selection==='wild'?'Selected':'Use blank'} · ${s?.blanks??2} left`;$('wildButton').setAttribute('aria-pressed',selection==='wild');
   $('wildLetter').disabled=!active;
   for(let i=0;i<5;i++){
     // Keep controls mounted so taps, keyboard focus and scroll position survive moves.

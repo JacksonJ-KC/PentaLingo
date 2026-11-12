@@ -70,6 +70,20 @@ test('final personal-best celebration uses the score after discard penalties',()
   assert.equal(run('fx.finalBest'),true);
 });
 
+test('discard cooldown blocks every input path until exactly one second and resets each round',()=>{
+  const run=app();
+  run("startRound();discard();const queued=s.queue;const bagSize=s.bag.length;const drag={preventDefault(){},stopPropagation(){},dataTransfer:{setData(){}}}");
+  run("placementPointerDown({button:0});$('discardButton').onclick();beginTileDrag(drag,'queue');dropTile(drag);endTileDrag();discard()");
+  assert.equal(run('s.discard.length'),1);
+  assert.equal(run('s.queue===queued&&s.bag.length===bagSize'),true);
+  run.advance(999);run('discard()');
+  assert.equal(run('s.discard.length'),1);
+  run.advance(1);run("beginTileDrag(drag,'queue');dropTile(drag)");
+  assert.equal(run('s.discard.length'),2);
+  run('endRound();startRound();discard()');
+  assert.equal(run('s.discard.length'),1);
+});
+
 test('one drag cannot consume multiple queue tiles or trigger a follow-up pointer click',()=>{
   const run=app();
   run("startRound();const drag={preventDefault(){},stopPropagation(){},dataTransfer:{setData(){}}};const front=s.queue;const next=s.bag[0];beginTileDrag(drag,'queue');dropTile(drag,0);dropTile(drag,1);clickLane({detail:1},2)");
